@@ -1,0 +1,41 @@
+{
+  "name": "pawjai-backend",
+  "version": "1.0.0",
+  "description": "Pawjai Backend API",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "dev:local": "NODE_ENV=development bun --env-file=env.local run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "start:local": "NODE_ENV=development bun --env-file=env.local run src/index.ts",
+    "build": "tsc",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "bun --env-file=env.local run drizzle-kit push",
+    "db:push:local": "bun --env-file=env.local run drizzle-kit push",
+    "db:studio": "bun --env-file=env.local run drizzle-kit studio"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.1.0",
+    "@fastify/helmet": "^13.0.1",
+    "@fastify/jwt": "^9.1.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "dotenv": "^16.3.1",
+    "drizzle-orm": "^0.29.3",
+    "fastify": "^5.4.0",
+    "jsonwebtoken": "^9.0.2",
+    "postgres": "^3.4.3",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^20.10.5",
+    "bun-types": "latest",
+    "drizzle-kit": "^0.20.9",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}
