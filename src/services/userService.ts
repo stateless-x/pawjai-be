@@ -1,9 +1,8 @@
 import { db } from '../db';
 import { userProfiles, userPersonalization } from '../db/schema';
-import { eq, desc, asc, count } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { genderSchema } from '../constants';
-import { PaginationOptions, PaginatedResponse, validatePaginationOptions, calculatePaginationInfo, calculateOffset } from '../utils';
 
 // Validation schemas
 const createUserProfileSchema = z.object({
@@ -176,65 +175,6 @@ export class UserService {
       return personalization[0];
     } catch (error) {
       throw new Error(`Failed to get user personalization by admin: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  async getAllUserProfiles(options?: PaginationOptions): Promise<PaginatedResponse<any>> {
-    try {
-      const { page, limit, sortBy, sortOrder } = validatePaginationOptions(options || {});
-      const offset = calculateOffset(page, limit);
-
-      // Get total count
-      const [{ count: total }] = await db.select({ count: count() }).from(userProfiles);
-
-      // Get paginated data
-      const sortColumn = sortBy === 'firstName' ? userProfiles.firstName : 
-                        sortBy === 'lastName' ? userProfiles.lastName : 
-                        userProfiles.createdAt;
-      const sortDirection = sortOrder === 'asc' ? asc : desc;
-
-      const profiles = await db
-        .select()
-        .from(userProfiles)
-        .orderBy(sortDirection(sortColumn))
-        .limit(limit)
-        .offset(offset);
-
-      return {
-        data: profiles,
-        pagination: calculatePaginationInfo(total, page, limit)
-      };
-    } catch (error) {
-      throw new Error(`Failed to get all user profiles: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  async getAllUserPersonalizations(options?: PaginationOptions): Promise<PaginatedResponse<any>> {
-    try {
-      const { page, limit, sortBy, sortOrder } = validatePaginationOptions(options || {});
-      const offset = calculateOffset(page, limit);
-
-      // Get total count
-      const [{ count: total }] = await db.select({ count: count() }).from(userPersonalization);
-
-      // Get paginated data
-      const sortColumn = sortBy === 'userId' ? userPersonalization.userId : 
-                        userPersonalization.createdAt;
-      const sortDirection = sortOrder === 'asc' ? asc : desc;
-
-      const personalizations = await db
-        .select()
-        .from(userPersonalization)
-        .orderBy(sortDirection(sortColumn))
-        .limit(limit)
-        .offset(offset);
-
-      return {
-        data: personalizations,
-        pagination: calculatePaginationInfo(total, page, limit)
-      };
-    } catch (error) {
-      throw new Error(`Failed to get all user personalizations: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }
