@@ -127,22 +127,22 @@ export default async function petRoutes(fastify: FastifyInstance) {
   fastify.delete('/:petId', {
     preHandler: requireAuth(),
   }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { petId } = request.params as { petId: string };
+    const authenticatedRequest = request as AuthenticatedRequest;
+    const userId = authenticatedRequest.user.id;
+    
     try {
-      const { petId } = request.params as { petId: string };
-      const authenticatedRequest = request as AuthenticatedRequest;
-      const userId = authenticatedRequest.user.id;
-      
       const result = await petService.deletePet(petId, userId);
-      return reply.send(result);
+      return reply.send(ApiResponses.success(result, 'Pet deleted successfully'));
     } catch (error) {
       fastify.log.error('Error in DELETE /:petId endpoint:', error);
       if (error instanceof Error && error.message.includes('not found')) {
-        return reply.status(404).send({ error: error.message });
+        return reply.status(404).send(ApiResponses.notFound('Pet', petId));
       }
       if (error instanceof Error && error.message.includes('Access denied')) {
-        return reply.status(403).send({ error: error.message });
+        return reply.status(403).send(ApiResponses.forbidden(error.message));
       }
-      return reply.status(500).send({ error: 'Internal server error' });
+      return reply.status(500).send(ApiResponses.internalError('Failed to delete pet'));
     }
   });
 } 
