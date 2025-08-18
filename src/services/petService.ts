@@ -15,26 +15,59 @@ const createPetSchema = z.object({
   gender: genderSchema.optional(),
   neutered: z.boolean().optional(),
   notes: z.string().optional(),
-  imageUrl: z.string().url().optional(),
+  imageUrl: z.string().url().or(z.literal('')).optional(),
 });
 
 const updatePetSchema = createPetSchema.partial().omit({ name: true });
+
+// Onboarding pet schema (for compatibility with onboarding flow)
+const onboardingPetSchema = z.object({
+  petName: z.string().min(1, "Pet name is required"),
+  petType: z.enum(["dog", "cat", "other"]),
+  petBreed: z.string().optional(), // For "other" species
+  breedId: z.string().uuid().optional(), // For known breeds
+  petGender: z.enum(["male", "female", "unknown"]),
+  neutered: z.enum(["yes", "no", "not_sure"]),
+  petBirthDay: z.string().optional(),
+  petBirthMonth: z.string().optional(),
+  petBirthYear: z.string().optional(),
+  avatarUrl: z.string().url().optional(),
+});
 
 export class PetService {
   // Normal user methods
   async getMyPets(userId: string) {
     try {
+      console.log(`PetService: Getting pets for user ${userId}`);
+      
       const userPets = await db
         .select({
-          pet: pets,
-          breed: breeds,
+          pet: {
+            id: pets.id,
+            userId: pets.userId,
+            breedId: pets.breedId,
+            name: pets.name,
+            species: pets.species,
+            dateOfBirth: pets.dateOfBirth,
+            weightKg: pets.weightKg,
+            gender: pets.gender,
+            neutered: pets.neutered,
+            notes: pets.notes,
+            imageUrl: pets.imageUrl,
+            createdAt: pets.createdAt,
+            updatedAt: pets.updatedAt,
+          },
+          breedName: breeds.nameTh,
         })
         .from(pets)
         .leftJoin(breeds, eq(pets.breedId, breeds.id))
         .where(eq(pets.userId, userId));
 
+      console.log(`PetService: Found ${userPets.length} pets for user ${userId}`);
       return userPets;
     } catch (error) {
+      console.error('PetService: Error getting user pets:', error);
+      console.error('PetService: Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       throw new Error(`Failed to get user pets: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -43,8 +76,22 @@ export class PetService {
     try {
       const pet = await db
         .select({
-          pet: pets,
-          breed: breeds,
+          pet: {
+            id: pets.id,
+            userId: pets.userId,
+            breedId: pets.breedId,
+            name: pets.name,
+            species: pets.species,
+            dateOfBirth: pets.dateOfBirth,
+            weightKg: pets.weightKg,
+            gender: pets.gender,
+            neutered: pets.neutered,
+            notes: pets.notes,
+            imageUrl: pets.imageUrl,
+            createdAt: pets.createdAt,
+            updatedAt: pets.updatedAt,
+          },
+          breedName: breeds.nameTh,
         })
         .from(pets)
         .leftJoin(breeds, eq(pets.breedId, breeds.id))
@@ -68,7 +115,25 @@ export class PetService {
 
   async createPet(userId: string, petData: z.infer<typeof createPetSchema>) {
     try {
+      console.log('PetService: Creating pet with data:', petData);
+      console.log('PetService: User ID:', userId);
+      
       const validatedData = createPetSchema.parse(petData);
+      console.log('PetService: Validated data:', validatedData);
+
+      // Check if breedId exists in the database if provided
+      if (validatedData.breedId) {
+        const breedExists = await db
+          .select({ id: breeds.id })
+          .from(breeds)
+          .where(eq(breeds.id, validatedData.breedId))
+          .limit(1);
+        
+        if (breedExists.length === 0) {
+          throw new Error(`Breed with ID ${validatedData.breedId} not found`);
+        }
+        console.log('PetService: Breed validation passed');
+      }
 
       const newPet = await db
         .insert(pets)
@@ -78,9 +143,51 @@ export class PetService {
         })
         .returning();
 
+      console.log('PetService: Created pet:', newPet[0]);
       return newPet[0];
     } catch (error) {
+      console.error('PetService: Error creating pet:', error);
+      console.error('PetService: Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       throw new Error(`Failed to create pet: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  // Method to create pet from onboarding data (for compatibility)
+  async createPetFromOnboarding(userId: string, petData: z.infer<typeof onboardingPetSchema>) {
+    try {
+      const validatedData = onboardingPetSchema.parse(petData);
+      
+      // Convert date parts to ISO date string
+      let dateOfBirth: string | undefined;
+      if (validatedData.petBirthDay && validatedData.petBirthMonth && validatedData.petBirthYear) {
+        dateOfBirth = `${validatedData.petBirthYear}-${validatedData.petBirthMonth}-${validatedData.petBirthDay}`;
+      }
+
+      // Convert neutered status to boolean
+      const neutered = validatedData.neutered === 'yes' ? true : 
+                      validatedData.neutered === 'no' ? false : 
+                      null;
+
+      const petPayload = {
+        userId,
+        name: validatedData.petName,
+        species: validatedData.petType as any,
+        dateOfBirth,
+        gender: validatedData.petGender as any,
+        neutered,
+        imageUrl: validatedData.avatarUrl,
+        breedId: validatedData.breedId,
+        notes: validatedData.petBreed ? `Breed: ${validatedData.petBreed}` : undefined,
+      };
+
+      const newPet = await db
+        .insert(pets)
+        .values(petPayload)
+        .returning();
+
+      return newPet[0];
+    } catch (error) {
+      throw new Error(`Failed to create pet from onboarding: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -151,7 +258,7 @@ export class PetService {
       const userPets = await db
         .select({
           pet: pets,
-          breed: breeds,
+          breedName: breeds.nameTh,
         })
         .from(pets)
         .leftJoin(breeds, eq(pets.breedId, breeds.id))
@@ -168,7 +275,7 @@ export class PetService {
       const pet = await db
         .select({
           pet: pets,
-          breed: breeds,
+          breedName: breeds.nameTh,
         })
         .from(pets)
         .leftJoin(breeds, eq(pets.breedId, breeds.id))
@@ -242,7 +349,7 @@ export class PetService {
       const allPets = await db
         .select({
           pet: pets,
-          breed: breeds,
+          breedName: breeds.nameTh,
         })
         .from(pets)
         .leftJoin(breeds, eq(pets.breedId, breeds.id))
@@ -264,7 +371,7 @@ export class PetService {
       const petsBySpecies = await db
         .select({
           pet: pets,
-          breed: breeds,
+          breedName: breeds.nameTh,
         })
         .from(pets)
         .leftJoin(breeds, eq(pets.breedId, breeds.id))

@@ -12,10 +12,13 @@ export default async function petRoutes(fastify: FastifyInstance) {
       const authenticatedRequest = request as AuthenticatedRequest;
       const userId = authenticatedRequest.user.id;
       
+      fastify.log.info(`Fetching pets for user: ${userId}`);
+      
       const userPets = await petService.getMyPets(userId);
       return reply.send(ApiResponses.success(userPets, 'User pets retrieved successfully'));
     } catch (error) {
-      fastify.log.error(error);
+      fastify.log.error('Error in /my-pets endpoint:', error);
+      fastify.log.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       return reply.status(500).send(ApiResponses.internalError('Failed to retrieve user pets'));
     }
   });
@@ -36,7 +39,7 @@ export default async function petRoutes(fastify: FastifyInstance) {
       const userPets = await petService.getUserPetsByAdmin(userId);
       return reply.send(ApiResponses.success(userPets, 'User pets retrieved successfully'));
     } catch (error) {
-      fastify.log.error(error);
+      fastify.log.error('Error in /user/:userId endpoint:', error);
       return reply.status(500).send(ApiResponses.internalError('Failed to retrieve user pets'));
     }
   });
@@ -53,7 +56,7 @@ export default async function petRoutes(fastify: FastifyInstance) {
       const pet = await petService.getPetById(petId, userId);
       return reply.send(ApiResponses.success(pet, 'Pet retrieved successfully'));
     } catch (error) {
-      fastify.log.error(error);
+      fastify.log.error('Error in /:petId endpoint:', error);
       if (error instanceof Error && error.message.includes('not found')) {
         return reply.status(404).send(ApiResponses.notFound('Pet', petId));
       }
@@ -73,10 +76,24 @@ export default async function petRoutes(fastify: FastifyInstance) {
       const userId = authenticatedRequest.user.id;
       const petData = request.body as any;
 
+      console.log('Pets route: Creating pet with data:', petData);
+      console.log('Pets route: User ID:', userId);
+
       const newPet = await petService.createPet(userId, petData);
       return reply.status(201).send(ApiResponses.created(newPet, 'Pet created successfully'));
     } catch (error) {
-      fastify.log.error(error);
+      fastify.log.error('Error in POST / endpoint:', error);
+      
+      // Handle specific validation errors
+      if (error instanceof Error) {
+        if (error.message.includes('Breed with ID')) {
+          return reply.status(400).send(ApiResponses.validationError(error.message));
+        }
+        if (error.message.includes('Failed to create pet')) {
+          return reply.status(400).send(ApiResponses.validationError(error.message));
+        }
+      }
+      
       return reply.status(500).send(ApiResponses.internalError('Failed to create pet'));
     }
   });
@@ -95,7 +112,7 @@ export default async function petRoutes(fastify: FastifyInstance) {
       const updatedPet = await petService.updatePet(petId, userId, petData);
       return reply.send(ApiResponses.updated(updatedPet, 'Pet updated successfully'));
     } catch (error) {
-      fastify.log.error(error);
+      fastify.log.error('Error in PUT /:petId endpoint:', error);
       if (error instanceof Error && error.message.includes('not found')) {
         return reply.status(404).send(ApiResponses.notFound('Pet', petId));
       }
@@ -118,7 +135,7 @@ export default async function petRoutes(fastify: FastifyInstance) {
       const result = await petService.deletePet(petId, userId);
       return reply.send(result);
     } catch (error) {
-      fastify.log.error(error);
+      fastify.log.error('Error in DELETE /:petId endpoint:', error);
       if (error instanceof Error && error.message.includes('not found')) {
         return reply.status(404).send({ error: error.message });
       }

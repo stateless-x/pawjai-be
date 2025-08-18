@@ -56,8 +56,9 @@ export const isCatBreed = (species: string): species is 'cat' => {
   return species === 'cat';
 };
 
-export const getBreedDetailTable = (species: Species): BreedDetailType => {
-  return BREED_DETAIL_TYPES[species];
+export const getBreedDetailTable = (species: Species): BreedDetailType | null => {
+  if (species === 'other') return null;
+  return BREED_DETAIL_TYPES[species as 'dog' | 'cat'];
 };
 
 export const hasDogSpecificFields = (species: Species): boolean => {

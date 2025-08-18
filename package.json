@@ -9,11 +9,12 @@
     "start": "bun run src/index.ts",
     "start:local": "NODE_ENV=development bun --env-file=env.local run src/index.ts",
     "build": "tsc",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:push": "bun --env-file=env.local run drizzle-kit push",
-    "db:push:local": "bun --env-file=env.local run drizzle-kit push",
-    "db:studio": "bun --env-file=env.local run drizzle-kit studio"
+    "db:generate": "bun --env-file=env.local run drizzle-kit generate:pg",
+    "db:migrate": "bun --env-file=env.local run drizzle-kit up:pg",
+    "db:push": "bun --env-file=env.local run drizzle-kit up:pg",
+    "db:push:local": "bun --env-file=env.local run drizzle-kit up:pg",
+    "db:studio": "bun --env-file=env.local run drizzle-kit studio",
+    "seed": "bun --env-file=env.local run src/seed/run.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",

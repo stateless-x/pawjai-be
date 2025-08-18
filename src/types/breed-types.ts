@@ -22,6 +22,7 @@ export interface BreedWithDetails {
 }
 
 export interface BreedNameResponse {
+  id: string; // Add breed ID for selector
   nameEn: string;
   nameTh: string;
 }

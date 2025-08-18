@@ -1,10 +1,10 @@
 // === ENUM DEFINITIONS ===
 // These enums are used throughout the application for type safety and consistency
 
-export const GENDER_ENUM = ['male', 'female', 'other'] as const;
+export const GENDER_ENUM = ['male', 'female', 'other', 'unknown'] as const;
 export type Gender = typeof GENDER_ENUM[number];
 
-export const SPECIES_ENUM = ['dog', 'cat'] as const;
+export const SPECIES_ENUM = ['dog', 'cat', 'other'] as const;
 export type Species = typeof SPECIES_ENUM[number];
 
 export const SIZE_ENUM = ['toy', 'small', 'medium', 'large', 'giant'] as const;

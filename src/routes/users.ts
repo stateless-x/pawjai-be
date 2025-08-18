@@ -65,6 +65,56 @@ export default async function userRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Onboarding: Save profile setup
+  fastify.post('/onboarding/profile', {
+    preHandler: requireAuth(),
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const authenticatedRequest = request as AuthenticatedRequest;
+      const userId = authenticatedRequest.user.id;
+      const profileData = request.body as any;
+      
+      fastify.log.info(`Onboarding profile request for user: ${userId}`);
+      fastify.log.info('Profile data received:', profileData);
+
+      const profile = await userService.saveOnboardingProfile(userId, profileData);
+      
+      fastify.log.info('Profile saved successfully:', profile);
+      return reply.status(201).send(ApiResponses.created(profile, 'Profile setup completed successfully'));
+    } catch (error) {
+      fastify.log.error('Error in /onboarding/profile endpoint:', error);
+      if (error instanceof Error && error.message.includes('validation')) {
+        return reply.status(400).send(ApiResponses.validationError({ message: error.message }));
+      }
+      return reply.status(500).send(ApiResponses.internalError('Failed to save profile setup'));
+    }
+  });
+
+  // Onboarding: Complete onboarding (profile + pet)
+  fastify.post('/onboarding/complete', {
+    preHandler: requireAuth(),
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const authenticatedRequest = request as AuthenticatedRequest;
+      const userId = authenticatedRequest.user.id;
+      const onboardingData = request.body as any;
+      
+      fastify.log.info(`Onboarding complete request for user: ${userId}`);
+      fastify.log.info('Onboarding data received:', onboardingData);
+
+      const result = await userService.completeOnboarding(userId, onboardingData);
+      
+      fastify.log.info('Onboarding completed successfully:', result);
+      return reply.status(201).send(ApiResponses.created(result, 'Onboarding completed successfully'));
+    } catch (error) {
+      fastify.log.error('Error in /onboarding/complete endpoint:', error);
+      if (error instanceof Error && error.message.includes('validation')) {
+        return reply.status(400).send(ApiResponses.validationError({ message: error.message }));
+      }
+      return reply.status(500).send(ApiResponses.internalError('Failed to complete onboarding'));
+    }
+  });
+
   // Get user personalization
   fastify.get('/personalization/:userId', {
     preHandler: requireAuth(),

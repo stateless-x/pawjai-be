@@ -6,6 +6,9 @@ import { SPECIES_ENUM, SIZE_ENUM, ACTIVITY_LEVEL_ENUM, GROOMING_NEEDS_ENUM, TRAI
 import { BreedFilters, BreedWithDetails, BreedNameResponse } from '../types';
 
 export class BreedService {
+  private breedNamesCache: Map<string, { data: BreedNameResponse[]; timestamp: number }> = new Map();
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
+
   async getBreeds(filters?: BreedFilters): Promise<PaginatedResponse<BreedWithDetails>> {
     try {
       const paginationOptions = validatePaginationOptions(filters || {});
@@ -489,6 +492,48 @@ export class BreedService {
     }
   }
 
+  async getBreedsBySpecies(species: typeof SPECIES_ENUM[number]): Promise<BreedWithDetails[]> {
+    try {
+      // Get breeds by species
+      const speciesBreeds = await db
+        .select()
+        .from(breeds)
+        .where(eq(breeds.species, species));
+
+      // Get details for each breed
+      const breedsWithDetails: BreedWithDetails[] = [];
+
+      for (const breed of speciesBreeds) {
+        let detail: DogBreedDetail | CatBreedDetail | null = null;
+
+        if (species === 'dog') {
+          const dogDetail = await db
+            .select()
+            .from(dogBreedDetails)
+            .where(eq(dogBreedDetails.breedId, breed.id))
+            .limit(1);
+          detail = dogDetail[0] || null;
+        } else if (species === 'cat') {
+          const catDetail = await db
+            .select()
+            .from(catBreedDetails)
+            .where(eq(catBreedDetails.breedId, breed.id))
+            .limit(1);
+          detail = catDetail[0] || null;
+        }
+
+        breedsWithDetails.push({
+          breed,
+          detail
+        });
+      }
+
+      return breedsWithDetails;
+    } catch (error) {
+      throw new Error(`Failed to get breeds by species: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
   async getBreedNamesBySpecies(species: typeof SPECIES_ENUM[number], options?: PaginationOptions): Promise<PaginatedResponse<BreedNameResponse>> {
     try {
       const { page, limit, sortBy, sortOrder } = validatePaginationOptions(options || {});
@@ -504,6 +549,7 @@ export class BreedService {
 
       const breedNames = await db
         .select({
+          id: breeds.id,
           nameEn: breeds.nameEn,
           nameTh: breeds.nameTh,
         })
@@ -530,6 +576,107 @@ export class BreedService {
     dogCount: dogCount[0].count,
     catCount: catCount[0].count,
   }
+  }
+
+  async getBreedNamesForSelector(
+    species: typeof SPECIES_ENUM[number], 
+    language: 'en' | 'th' = 'th',
+    options?: PaginationOptions
+  ): Promise<PaginatedResponse<BreedNameResponse>> {
+    try {
+      const cacheKey = `${species}_${language}`;
+      const now = Date.now();
+      
+      // Check cache first
+      const cached = this.breedNamesCache.get(cacheKey);
+      if (cached && (now - cached.timestamp) < this.CACHE_TTL) {
+        // Return cached data with pagination
+        const { page, limit } = validatePaginationOptions(options || {});
+        const offset = calculateOffset(page, limit);
+        const total = cached.data.length;
+        const paginatedData = cached.data.slice(offset, offset + limit);
+        
+        return {
+          data: paginatedData,
+          pagination: calculatePaginationInfo(total, page, limit)
+        };
+      }
+
+      // If not cached or expired, fetch from database
+      const { page, limit, sortBy, sortOrder } = validatePaginationOptions(options || {});
+      const offset = calculateOffset(page, limit);
+
+      // Get total count
+      const [{ count: total }] = await db
+        .select({ count: count() })
+        .from(breeds)
+        .where(eq(breeds.species, species));
+
+      // Get breed names
+      const sortColumn = sortBy === 'name' ? breeds.nameEn : breeds.createdAt;
+      const sortDirection = sortOrder === 'asc' ? asc : desc;
+
+      const breedNames = await db
+        .select({
+          id: breeds.id,
+          nameEn: breeds.nameEn,
+          nameTh: breeds.nameTh,
+        })
+        .from(breeds)
+        .where(eq(breeds.species, species))
+        .orderBy(sortDirection(sortColumn))
+        .limit(limit)
+        .offset(offset);
+
+      // Transform data - no displayName field needed
+      const transformedData: BreedNameResponse[] = breedNames.map(breed => ({
+        id: breed.id,
+        nameEn: breed.nameEn,
+        nameTh: breed.nameTh,
+      }));
+
+      // Cache the full result (without pagination for better cache hit rate)
+      const allBreedsForSpecies = await db
+        .select({
+          id: breeds.id,
+          nameEn: breeds.nameEn,
+          nameTh: breeds.nameTh,
+        })
+        .from(breeds)
+        .where(eq(breeds.species, species))
+        .orderBy(asc(breeds.nameEn));
+
+      const allTransformedData: BreedNameResponse[] = allBreedsForSpecies.map(breed => ({
+        id: breed.id,
+        nameEn: breed.nameEn,
+        nameTh: breed.nameTh,
+      }));
+
+      this.breedNamesCache.set(cacheKey, {
+        data: allTransformedData,
+        timestamp: now
+      });
+
+      return {
+        data: transformedData,
+        pagination: calculatePaginationInfo(total, page, limit)
+      };
+    } catch (error) {
+      throw new Error(`Failed to get breed names for selector: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  // Method to clear cache (useful for admin operations)
+  clearBreedNamesCache(): void {
+    this.breedNamesCache.clear();
+  }
+
+  // Method to get cache stats (useful for monitoring)
+  getCacheStats(): { size: number; keys: string[] } {
+    return {
+      size: this.breedNamesCache.size,
+      keys: Array.from(this.breedNamesCache.keys())
+    };
   }
 }
 

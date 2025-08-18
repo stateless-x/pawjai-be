@@ -19,6 +19,23 @@ export default async function breedRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Get breeds by species
+  fastify.get('/species/:species', async (request: FastifyRequest<{ Params: { species: string } }>, reply: FastifyReply) => {
+    const { species } = request.params;
+    
+    try {
+      if (!SPECIES_ENUM.includes(species as typeof SPECIES_ENUM[number])) {
+        return reply.status(400).send(ApiResponses.validationError('Invalid species. Must be "dog" or "cat"'));
+      }
+
+      const breeds = await breedService.getBreedsBySpecies(species as typeof SPECIES_ENUM[number]);
+      return reply.send(ApiResponses.success(breeds, `${species} breeds retrieved successfully`));
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send(ApiResponses.internalError('Failed to retrieve breeds by species'));
+    }
+  });
+
   // Get breed names by species
   fastify.get('/names', async (request: FastifyRequest<{
     Querystring: PaginationOptions & { species: string }
@@ -40,6 +57,41 @@ export default async function breedRoutes(fastify: FastifyInstance) {
     } catch (error) {
       fastify.log.error(error);
       return reply.status(500).send(ApiResponses.internalError('Failed to retrieve breed names'));
+    }
+  });
+
+  // Get breed names for selector (with caching and language support)
+  fastify.get('/selector', async (request: FastifyRequest<{
+    Querystring: PaginationOptions & { 
+      species: string; 
+      language?: 'en' | 'th' 
+    }
+  }>, reply: FastifyReply) => {
+    const { species, language = 'th', ...paginationOptions } = request.query;
+    
+    try {
+      if (!species || !SPECIES_ENUM.includes(species as typeof SPECIES_ENUM[number])) {
+        return reply.status(400).send(ApiResponses.validationError('Invalid species. Must be "dog" or "cat"'));
+      }
+
+      if (language && !['en', 'th'].includes(language)) {
+        return reply.status(400).send(ApiResponses.validationError('Invalid language. Must be "en" or "th"'));
+      }
+
+      const result = await breedService.getBreedNamesForSelector(
+        species as typeof SPECIES_ENUM[number], 
+        language as 'en' | 'th',
+        paginationOptions
+      );
+      
+      return reply.send(ApiResponses.paginated(
+        result.data, 
+        result.pagination, 
+        `${species} breed names for selector retrieved successfully`
+      ));
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send(ApiResponses.internalError('Failed to retrieve breed names for selector'));
     }
   });
 
@@ -137,6 +189,28 @@ export default async function breedRoutes(fastify: FastifyInstance) {
     } catch (error) {
       fastify.log.error(error);
       return reply.status(500).send(ApiResponses.internalError('Failed to fetch breed count'));
+    }
+  });
+
+  // Clear breed names cache (admin only)
+  fastify.delete('/cache', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      breedService.clearBreedNamesCache();
+      return reply.send(ApiResponses.success({ message: 'Cache cleared successfully' }, 'Breed names cache cleared'));
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send(ApiResponses.internalError('Failed to clear cache'));
+    }
+  });
+
+  // Get cache stats (admin only)
+  fastify.get('/cache/stats', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const stats = breedService.getCacheStats();
+      return reply.send(ApiResponses.success(stats, 'Cache stats retrieved successfully'));
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send(ApiResponses.internalError('Failed to get cache stats'));
     }
   });
 } 

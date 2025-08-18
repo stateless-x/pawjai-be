@@ -15,6 +15,7 @@ export const sizeEnum = pgEnum('size', SIZE_ENUM);
 export const activityLevelEnum = pgEnum('activity_level', ACTIVITY_LEVEL_ENUM);
 export const groomingNeedsEnum = pgEnum('grooming_needs', GROOMING_NEEDS_ENUM);
 export const trainingDifficultyEnum = pgEnum('training_difficulty', TRAINING_DIFFICULTY_ENUM);
+export const authStepEnum = pgEnum('auth_step', ['idle','signing-up','signing-in','email-confirmation','onboarding','completed']);
 
 // === USER PROFILES (Identity) ===
 export const userProfiles = pgTable('user_profiles', {
@@ -26,6 +27,18 @@ export const userProfiles = pgTable('user_profiles', {
   gender: genderEnum('gender'),
   province: text('province'),
   profileImage: text('profile_image'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// === USER AUTH STATE (Store pawjai-auth-storage server-side) ===
+export const userAuthStates = pgTable('user_auth_states', {
+  userId: uuid('user_id').primaryKey(),
+  isAuthenticated: boolean('is_authenticated').default(false),
+  pendingEmailConfirmation: text('pending_email_confirmation'),
+  emailConfirmationSent: boolean('email_confirmation_sent').default(false),
+  onboardingCompleted: boolean('onboarding_completed').default(false),
+  currentAuthStep: authStepEnum('current_auth_step'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -112,6 +125,8 @@ export type UserProfile = typeof userProfiles.$inferSelect;
 export type NewUserProfile = typeof userProfiles.$inferInsert;
 export type UserPersonalization = typeof userPersonalization.$inferSelect;
 export type NewUserPersonalization = typeof userPersonalization.$inferInsert;
+export type UserAuthState = typeof userAuthStates.$inferSelect;
+export type NewUserAuthState = typeof userAuthStates.$inferInsert;
 
 export type Breed = typeof breeds.$inferSelect;
 export type NewBreed = typeof breeds.$inferInsert;
