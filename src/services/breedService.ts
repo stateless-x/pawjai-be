@@ -678,6 +678,37 @@ export class BreedService {
       keys: Array.from(this.breedNamesCache.keys())
     };
   }
+
+  // Bulk insert breeds
+  async bulkInsertBreeds(breedData: Array<{
+    species: 'dog' | 'cat';
+    nameEn: string;
+    nameTh: string;
+    descriptionEn?: string;
+    descriptionTh?: string;
+    lifespanMinYears?: number;
+    lifespanMaxYears?: number;
+    originCountry?: string;
+  }>) {
+    try {
+      console.log(`BreedService: Bulk inserting ${breedData.length} breeds...`);
+      
+      const insertedBreeds = await db
+        .insert(breeds)
+        .values(breedData)
+        .returning();
+
+      console.log(`BreedService: Successfully inserted ${insertedBreeds.length} breeds`);
+      
+      // Clear cache after bulk insert
+      this.clearBreedNamesCache();
+      
+      return insertedBreeds;
+    } catch (error) {
+      console.error('BreedService: Error bulk inserting breeds:', error);
+      throw new Error(`Failed to bulk insert breeds: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
 }
 
 export const breedService = new BreedService();

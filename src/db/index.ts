@@ -3,6 +3,8 @@ import postgres from 'postgres';
 import { config } from 'dotenv';
 import * as schema from './schema';
 
+// Load environment variables from .env and .env.local
+config({ path: '.env.local' });
 config();
 
 const connectionString = process.env.DATABASE_URL;

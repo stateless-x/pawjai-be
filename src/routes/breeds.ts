@@ -213,4 +213,40 @@ export default async function breedRoutes(fastify: FastifyInstance) {
       return reply.status(500).send(ApiResponses.internalError('Failed to get cache stats'));
     }
   });
+
+  // Bulk insert breeds
+  fastify.post('/bulk', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const breedData = request.body as Array<{
+        species: 'dog' | 'cat';
+        nameEn: string;
+        nameTh: string;
+        descriptionEn?: string;
+        descriptionTh?: string;
+        lifespanMinYears?: number;
+        lifespanMaxYears?: number;
+        originCountry?: string;
+      }>;
+
+      if (!Array.isArray(breedData) || breedData.length === 0) {
+        return reply.status(400).send(ApiResponses.validationError('Breed data must be a non-empty array'));
+      }
+
+      // Validate each breed entry
+      for (const breed of breedData) {
+        if (!breed.species || !['dog', 'cat'].includes(breed.species)) {
+          return reply.status(400).send(ApiResponses.validationError('Invalid species. Must be "dog" or "cat"'));
+        }
+        if (!breed.nameEn || !breed.nameTh) {
+          return reply.status(400).send(ApiResponses.validationError('nameEn and nameTh are required for all breeds'));
+        }
+      }
+
+      const insertedBreeds = await breedService.bulkInsertBreeds(breedData);
+      return reply.status(201).send(ApiResponses.created(insertedBreeds, `${insertedBreeds.length} breeds created successfully`));
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send(ApiResponses.internalError('Failed to bulk insert breeds'));
+    }
+  });
 } 
