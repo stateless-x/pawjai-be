@@ -23,13 +23,12 @@
     "dotenv": "^16.3.1",
     "drizzle-orm": "^0.29.3",
     "fastify": "^5.4.0",
-    "jsonwebtoken": "^9.0.2",
+    "jose": "^6.0.12",
     "postgres": "^3.4.3",
     "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
-    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.10.5",
     "bun-types": "latest",
     "drizzle-kit": "^0.20.9",
