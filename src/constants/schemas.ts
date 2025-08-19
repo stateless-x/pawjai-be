@@ -8,7 +8,10 @@ import {
   SIZE_ENUM,
   ACTIVITY_LEVEL_ENUM,
   GROOMING_NEEDS_ENUM,
-  TRAINING_DIFFICULTY_ENUM
+  TRAINING_DIFFICULTY_ENUM,
+  SUBSCRIPTION_PLAN_ENUM,
+  SUBSCRIPTION_STATUS_ENUM,
+  BILLING_CYCLE_ENUM
 } from './enums';
 
 export const genderSchema = z.enum(GENDER_ENUM);
@@ -17,6 +20,11 @@ export const sizeSchema = z.enum(SIZE_ENUM);
 export const activityLevelSchema = z.enum(ACTIVITY_LEVEL_ENUM);
 export const groomingNeedsSchema = z.enum(GROOMING_NEEDS_ENUM);
 export const trainingDifficultySchema = z.enum(TRAINING_DIFFICULTY_ENUM);
+
+// Subscriptions
+export const subscriptionPlanSchema = z.enum(SUBSCRIPTION_PLAN_ENUM);
+export const subscriptionStatusSchema = z.enum(SUBSCRIPTION_STATUS_ENUM);
+export const billingCycleSchema = z.enum(BILLING_CYCLE_ENUM);
 
 // === BREED SCHEMAS ===
 // Schemas for the new breed structure
@@ -62,4 +70,19 @@ export const breedWithDetailsSchema = z.object({
   breed: baseBreedSchema,
   dogDetails: dogBreedDetailSchema.optional(),
   catDetails: catBreedDetailSchema.optional(),
-}); 
+});
+
+// === SUBSCRIPTION SCHEMAS ===
+export const subscriptionCreateSchema = z.object({
+  plan: subscriptionPlanSchema.default('free'),
+  status: subscriptionStatusSchema.default('active'),
+  cycle: z.object({
+    type: billingCycleSchema.default('monthly'),
+    priceCents: z.number().int().nonnegative().default(0),
+    currency: z.string().default('THB'),
+  }).default({ type: 'monthly', priceCents: 0, currency: 'THB' }),
+  trialEndsAt: z.string().datetime().optional(),
+  currentPeriodEnd: z.string().datetime().optional(),
+});
+
+export const subscriptionUpdateSchema = subscriptionCreateSchema.partial(); 

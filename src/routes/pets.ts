@@ -1,7 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { requireAuth, AuthenticatedRequest } from '../middleware/auth';
-import { petService } from '../services';
-import { ApiResponses } from '../utils';
+import { requireAuth } from '@/middleware/auth';
+import { AuthenticatedRequest } from '@/types';
+import { petService } from '@/services';
+import { ApiResponses } from '@/utils';
 
 export default async function petRoutes(fastify: FastifyInstance) {
   // Get all pets for the authenticated user
@@ -76,15 +77,11 @@ export default async function petRoutes(fastify: FastifyInstance) {
       const userId = authenticatedRequest.user.id;
       const petData = request.body as any;
 
-      console.log('Pets route: Creating pet with data:', petData);
-      console.log('Pets route: User ID:', userId);
-
       const newPet = await petService.createPet(userId, petData);
       return reply.status(201).send(ApiResponses.created(newPet, 'Pet created successfully'));
     } catch (error) {
       fastify.log.error('Error in POST / endpoint:', error);
       
-      // Handle specific validation errors
       if (error instanceof Error) {
         if (error.message.includes('Breed with ID')) {
           return reply.status(400).send(ApiResponses.validationError(error.message));

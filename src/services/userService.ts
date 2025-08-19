@@ -1,8 +1,10 @@
-import { db } from '../db';
-import { userProfiles, userPersonalization, pets, userAuthStates } from '../db/schema';
+import { db } from '@/db';
+import { userProfiles, userPersonalization, pets, userAuthStates } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { genderSchema, speciesSchema } from '../constants';
+import { genderSchema, speciesSchema, onboardingProfileSchema, onboardingPetSchemaStrict, completeOnboardingSchemaStrict } from '@/constants';
+import { toIsoDateOrUndefined } from '@/utils/date';
+import { subscriptionService } from '@/services/subscriptionService';
 
 // Validation schemas
 const createUserProfileSchema = z.object({
@@ -25,44 +27,12 @@ const createUserPersonalizationSchema = z.object({
   referralSource: z.string().optional(),
 });
 
-// Auth state schema (mirror client AuthState essentials)
 const userAuthStateSchema = z.object({
   isAuthenticated: z.boolean().optional(),
   pendingEmailConfirmation: z.string().nullable().optional(),
   emailConfirmationSent: z.boolean().optional(),
   onboardingCompleted: z.boolean().optional(),
   currentAuthStep: z.enum(['idle','signing-up','signing-in','email-confirmation','onboarding','completed']).optional(),
-});
-
-// Onboarding schemas
-const onboardingProfileSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  phoneNumber: z.string().min(10, "Phone number must be at least 10 digits"),
-  ownerBirthDay: z.string().optional(),
-  ownerBirthMonth: z.string().optional(),
-  ownerBirthYear: z.string().optional(),
-  ownerGender: z.string().optional(),
-  ownerProvince: z.string().optional(),
-  ownerAgreeTerms: z.boolean().default(false),
-  marketingConsent: z.boolean().optional(),
-});
-
-const onboardingPetSchema = z.object({
-  petName: z.string().min(1, "Pet name is required"),
-  petType: z.enum(["dog", "cat", "other"]),
-  petBreed: z.string().min(1, "Pet breed is required"),
-  petGender: z.enum(["male", "female", "unknown"]),
-  neutered: z.enum(["yes", "no", "not_sure"]),
-  petBirthDay: z.string().optional(),
-  petBirthMonth: z.string().optional(),
-  petBirthYear: z.string().optional(),
-  avatarUrl: z.string().url().optional(),
-});
-
-const completeOnboardingSchema = z.object({
-  profile: onboardingProfileSchema,
-  pet: onboardingPetSchema,
 });
 
 export class UserService {
@@ -103,12 +73,41 @@ export class UserService {
         .limit(1);
 
       if (profile.length === 0) {
-        throw new Error('User profile not found');
+        return null; // Return null instead of throwing error
       }
 
       return profile[0];
     } catch (error) {
       throw new Error(`Failed to get user profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  async ensureUserProfile(userId: string) {
+    try {
+      const existingProfile = await db
+        .select()
+        .from(userProfiles)
+        .where(eq(userProfiles.id, userId))
+        .limit(1);
+
+      if (existingProfile.length > 0) {
+        return existingProfile[0];
+      }
+
+      // Create a minimal default profile
+      const [newProfile] = await db
+        .insert(userProfiles)
+        .values({
+          id: userId,
+          firstName: '',
+          lastName: '',
+          phoneNumber: '',
+        })
+        .returning();
+
+      return newProfile;
+    } catch (error) {
+      throw new Error(`Failed to ensure user profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -123,7 +122,6 @@ export class UserService {
         .limit(1);
 
       if (existingProfile.length > 0) {
-        // Update existing profile
         const updatedProfile = await db
           .update(userProfiles)
           .set({
@@ -133,9 +131,9 @@ export class UserService {
           .where(eq(userProfiles.id, userId))
           .returning();
 
+        await subscriptionService.ensure(userId);
         return updatedProfile[0];
       } else {
-        // Create new profile
         const newProfile = await db
           .insert(userProfiles)
           .values({
@@ -144,6 +142,7 @@ export class UserService {
           })
           .returning();
 
+        await subscriptionService.ensure(userId);
         return newProfile[0];
       }
     } catch (error) {
@@ -180,7 +179,6 @@ export class UserService {
         .limit(1);
 
       if (existingPersonalization.length > 0) {
-        // Update existing personalization
         const updatedPersonalization = await db
           .update(userPersonalization)
           .set({
@@ -192,7 +190,6 @@ export class UserService {
 
         return updatedPersonalization[0];
       } else {
-        // Create new personalization
         const newPersonalization = await db
           .insert(userPersonalization)
           .values({
@@ -211,40 +208,45 @@ export class UserService {
   // Onboarding methods
   async saveOnboardingProfile(userId: string, profileData: z.infer<typeof onboardingProfileSchema>) {
     try {
-      console.log('UserService: Saving onboarding profile for user:', userId);
-      console.log('UserService: Profile data received:', profileData);
-      
       const validatedData = onboardingProfileSchema.parse(profileData);
-      console.log('UserService: Profile data validated:', validatedData);
-      
-      // Convert date parts to ISO date string
-      let birthDate: string | undefined;
-      if (validatedData.ownerBirthDay && validatedData.ownerBirthMonth && validatedData.ownerBirthYear) {
-        birthDate = `${validatedData.ownerBirthYear}-${validatedData.ownerBirthMonth}-${validatedData.ownerBirthDay}`;
+
+      // Validate gender value
+      if (validatedData.ownerGender && !['male', 'female', 'other', 'unknown'].includes(validatedData.ownerGender)) {
+        throw new Error(`Invalid gender value: ${validatedData.ownerGender}`);
       }
+
+      const birthDate = toIsoDateOrUndefined(
+        validatedData.ownerBirthYear,
+        validatedData.ownerBirthMonth,
+        validatedData.ownerBirthDay,
+      );
 
       const profilePayload = {
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
         phoneNumber: validatedData.phoneNumber,
         birthDate,
-        gender: validatedData.ownerGender as any,
+        gender: validatedData.ownerGender as 'male' | 'female' | 'other' | 'unknown',
         province: validatedData.ownerProvince,
+        marketingConsent: validatedData.marketingConsent || false,
+        marketingConsentAt: validatedData.marketingConsent ? new Date() : null,
+        tosConsent: validatedData.ownerAgreeTerms || false,
+        tosConsentAt: validatedData.ownerAgreeTerms ? new Date() : null,
+        tosVersion: validatedData.tosVersion || '1.0',
       };
-      
-      console.log('UserService: Profile payload prepared:', profilePayload);
 
+      console.log('Profile payload:', profilePayload);
+
+      console.log('Checking for existing profile for user:', userId);
       const existingProfile = await db
         .select()
         .from(userProfiles)
         .where(eq(userProfiles.id, userId))
         .limit(1);
-
-      console.log('UserService: Existing profile check:', existingProfile.length > 0 ? 'Found' : 'Not found');
+      console.log('Existing profile found:', existingProfile.length > 0);
 
       if (existingProfile.length > 0) {
-        // Update existing profile
-        console.log('UserService: Updating existing profile');
+        console.log('Updating existing profile...');
         const updatedProfile = await db
           .update(userProfiles)
           .set({
@@ -253,12 +255,17 @@ export class UserService {
           })
           .where(eq(userProfiles.id, userId))
           .returning();
+        console.log('Profile updated successfully');
 
-        console.log('UserService: Profile updated:', updatedProfile[0]);
+        try {
+          await subscriptionService.ensure(userId);
+        } catch (subscriptionError) {
+          console.error('Subscription service error:', subscriptionError);
+          // Don't fail the profile creation if subscription fails
+        }
         return updatedProfile[0];
       } else {
-        // Create new profile
-        console.log('UserService: Creating new profile');
+        console.log('Creating new profile...');
         const newProfile = await db
           .insert(userProfiles)
           .values({
@@ -266,31 +273,37 @@ export class UserService {
             ...profilePayload,
           })
           .returning();
+        console.log('Profile created successfully');
 
-        console.log('UserService: Profile created:', newProfile[0]);
+        try {
+          await subscriptionService.ensure(userId);
+        } catch (subscriptionError) {
+          console.error('Subscription service error:', subscriptionError);
+          // Don't fail the profile creation if subscription fails
+        }
         return newProfile[0];
       }
     } catch (error) {
-      console.error('UserService: Error saving onboarding profile:', error);
+      console.error('Error in saveOnboardingProfile:', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : undefined
+      });
       throw new Error(`Failed to save onboarding profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  async saveOnboardingPet(userId: string, petData: z.infer<typeof onboardingPetSchema>) {
+  async saveOnboardingPet(userId: string, petData: z.infer<typeof onboardingPetSchemaStrict>) {
     try {
-      console.log('UserService: Saving onboarding pet for user:', userId);
-      console.log('UserService: Pet data received:', petData);
-      
-      const validatedData = onboardingPetSchema.parse(petData);
-      console.log('UserService: Pet data validated:', validatedData);
-      
-      // Convert date parts to ISO date string
-      let dateOfBirth: string | undefined;
-      if (validatedData.petBirthDay && validatedData.petBirthMonth && validatedData.petBirthYear) {
-        dateOfBirth = `${validatedData.petBirthYear}-${validatedData.petBirthMonth}-${validatedData.petBirthDay}`;
-      }
+      const validatedData = onboardingPetSchemaStrict.parse(petData);
 
-      // Convert neutered status to boolean
+      const dateOfBirth = toIsoDateOrUndefined(
+        validatedData.petBirthYear,
+        validatedData.petBirthMonth,
+        validatedData.petBirthDay,
+      );
+
       const neutered = validatedData.neutered === 'yes' ? true : 
                       validatedData.neutered === 'no' ? false : 
                       null;
@@ -305,45 +318,31 @@ export class UserService {
         imageUrl: validatedData.avatarUrl,
         notes: `Breed: ${validatedData.petBreed}`,
       };
-      
-      console.log('UserService: Pet payload prepared:', petPayload);
 
       const newPet = await db
         .insert(pets)
         .values(petPayload)
         .returning();
 
-      console.log('UserService: Pet created:', newPet[0]);
       return newPet[0];
     } catch (error) {
-      console.error('UserService: Error saving onboarding pet:', error);
       throw new Error(`Failed to save onboarding pet: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  async completeOnboarding(userId: string, onboardingData: z.infer<typeof completeOnboardingSchema>) {
+  async completeOnboarding(userId: string, onboardingData: z.infer<typeof completeOnboardingSchemaStrict>) {
     try {
-      const validatedData = completeOnboardingSchema.parse(onboardingData);
-      
-      console.log('UserService: Completing onboarding for user:', userId);
-      console.log('UserService: Profile data:', validatedData.profile);
-      console.log('UserService: Pet data:', validatedData.pet);
-      
-      // Save profile (will create or update)
+      const validatedData = completeOnboardingSchemaStrict.parse(onboardingData);
+
       const profile = await this.saveOnboardingProfile(userId, validatedData.profile);
-      console.log('UserService: Profile saved:', profile);
-      
-      // Save pet
       const pet = await this.saveOnboardingPet(userId, validatedData.pet);
-      console.log('UserService: Pet saved:', pet);
-      
+
       return {
         profile,
         pet,
         message: 'Onboarding completed successfully'
       };
     } catch (error) {
-      console.error('UserService: Error completing onboarding:', error);
       throw new Error(`Failed to complete onboarding: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

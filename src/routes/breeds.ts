@@ -1,8 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { breedService } from '../services';
-import { ApiResponses, PaginationOptions } from '../utils';
-import { BreedFilters } from '../types';
-import { SPECIES_ENUM } from '../constants';
+import { breedService } from '@/services';
+import { ApiResponses, PaginationOptions } from '@/utils';
+import { BreedFilters } from '@/types';
+import { SPECIES_ENUM } from '@/constants';
 
 export default async function breedRoutes(fastify: FastifyInstance) {
   // Get all breeds with optional filtering
@@ -140,7 +140,6 @@ export default async function breedRoutes(fastify: FastifyInstance) {
     try {
       const requestBody = request.body as any;
       
-      // Handle nested structure: { breed: {...}, detail: {...} }
       let breedData: any;
       let detailsData: any;
       

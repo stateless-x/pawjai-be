@@ -27,6 +27,11 @@ export const userProfiles = pgTable('user_profiles', {
   gender: genderEnum('gender'),
   province: text('province'),
   profileImage: text('profile_image'),
+  marketingConsent: boolean('marketing_consent').notNull().default(false),
+  marketingConsentAt: timestamp('marketing_consent_at'),
+  tosConsent: boolean('tos_consent').notNull().default(false),
+  tosConsentAt: timestamp('tos_consent_at'),
+  tosVersion: text('tos_version'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -55,6 +60,24 @@ export const userPersonalization = pgTable('user_personalization', {
   ownerPetExperience: text('owner_pet_experience'),
   priority: text('priority').array(),
   referralSource: text('referral_source'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// === SUBSCRIPTIONS (1:1 with user profile) ===
+export const subscriptionPlanEnum = pgEnum('subscription_plan', ['free','premium']);
+export const subscriptionStatusEnum = pgEnum('subscription_status', ['active','canceled','past_due','incomplete']);
+export const billingCycleEnum = pgEnum('billing_cycle', ['monthly','yearly']);
+
+export const userSubscriptions = pgTable('user_subscriptions', {
+  userId: uuid('user_id').primaryKey().references(() => userProfiles.id),
+  plan: subscriptionPlanEnum('plan').default('free'),
+  status: subscriptionStatusEnum('status').default('active'),
+  billingCycle: billingCycleEnum('billing_cycle').default('monthly'),
+  priceCents: integer('price_cents').default(0),
+  currency: text('currency').default('THB'),
+  trialEndsAt: timestamp('trial_ends_at'),
+  currentPeriodEnd: timestamp('current_period_end'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -127,6 +150,9 @@ export type UserPersonalization = typeof userPersonalization.$inferSelect;
 export type NewUserPersonalization = typeof userPersonalization.$inferInsert;
 export type UserAuthState = typeof userAuthStates.$inferSelect;
 export type NewUserAuthState = typeof userAuthStates.$inferInsert;
+
+export type UserSubscription = typeof userSubscriptions.$inferSelect;
+export type NewUserSubscription = typeof userSubscriptions.$inferInsert;
 
 export type Breed = typeof breeds.$inferSelect;
 export type NewBreed = typeof breeds.$inferInsert;

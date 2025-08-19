@@ -11,6 +11,7 @@ import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import petRoutes from './routes/pets';
 import breedRoutes from './routes/breeds';
+import subscriptionRoutes from './routes/subscriptions';
 
 config();
 
@@ -49,6 +50,7 @@ await fastify.register(authRoutes, { prefix: '/api/auth' });
 await fastify.register(userRoutes, { prefix: '/api/users' });
 await fastify.register(petRoutes, { prefix: '/api/pets' });
 await fastify.register(breedRoutes, { prefix: '/api/breeds' });
+await fastify.register(subscriptionRoutes, { prefix: '/api/subscriptions' });
 
 // Error handler
 fastify.setErrorHandler((error, request, reply) => {
@@ -62,7 +64,7 @@ const host = '0.0.0.0';
 
 try {
   await fastify.listen({ port, host });
-  console.log(`Server is running on http://localhost:${port}`);
+  fastify.log.info(`Server is running on http://localhost:${port}`);
 } catch (err) {
   fastify.log.error(err);
   process.exit(1);

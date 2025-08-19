@@ -56,4 +56,14 @@ export const SHARED_BREED_FIELDS = [
   'lifespanMinYears',
   'lifespanMaxYears',
   'originCountry'
-] as const; 
+] as const;
+
+// === SUBSCRIPTION ENUMS ===
+export const SUBSCRIPTION_PLAN_ENUM = ['free', 'premium'] as const;
+export type SubscriptionPlan = typeof SUBSCRIPTION_PLAN_ENUM[number];
+
+export const SUBSCRIPTION_STATUS_ENUM = ['active', 'canceled', 'past_due', 'incomplete'] as const;
+export type SubscriptionStatus = typeof SUBSCRIPTION_STATUS_ENUM[number];
+
+export const BILLING_CYCLE_ENUM = ['monthly', 'yearly'] as const;
+export type BillingCycle = typeof BILLING_CYCLE_ENUM[number]; 

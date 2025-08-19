@@ -1,28 +1,23 @@
-import { db } from '../db';
-import { breeds, dogBreedDetails, catBreedDetails, type Breed, type DogBreedDetail, type CatBreedDetail } from '../db/schema';
-import { eq, like, and, or, asc, desc, count } from 'drizzle-orm';
-import { PaginationOptions, PaginatedResponse, validatePaginationOptions, calculatePaginationInfo, calculateOffset, ApiResponses, ApiResponse } from '../utils';
-import { SPECIES_ENUM, SIZE_ENUM, ACTIVITY_LEVEL_ENUM, GROOMING_NEEDS_ENUM, TRAINING_DIFFICULTY_ENUM } from '../constants';
-import { BreedFilters, BreedWithDetails, BreedNameResponse } from '../types';
+import { db } from '@/db';
+import { breeds, dogBreedDetails, catBreedDetails, type Breed, type DogBreedDetail, type CatBreedDetail } from '@/db/schema';
+import { eq, like, and, asc, desc, count } from 'drizzle-orm';
+import { PaginationOptions, PaginatedResponse, validatePaginationOptions, calculatePaginationInfo, calculateOffset } from '@/utils';
+import { SPECIES_ENUM, SIZE_ENUM, ACTIVITY_LEVEL_ENUM, GROOMING_NEEDS_ENUM, TRAINING_DIFFICULTY_ENUM } from '@/constants';
+import { BreedFilters, BreedWithDetails, BreedNameResponse } from '@/types';
 
 export class BreedService {
   private breedNamesCache: Map<string, { data: BreedNameResponse[]; timestamp: number }> = new Map();
-  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
+  private readonly CACHE_TTL = 5 * 60 * 1000;
 
   async getBreeds(filters?: BreedFilters): Promise<PaginatedResponse<BreedWithDetails>> {
     try {
       const paginationOptions = validatePaginationOptions(filters || {});
       const { page, limit, sortBy, sortOrder } = paginationOptions;
       const offset = calculateOffset(page, limit);
-      const baseConditions = [];
+      const baseConditions = [] as any[];
       
-      if (filters?.species) {
-        baseConditions.push(eq(breeds.species, filters.species));
-      }
-      
-      if (filters?.search) {
-        baseConditions.push(like(breeds.nameEn, `%${filters.search}%`));
-      }
+      if (filters?.species) baseConditions.push(eq(breeds.species, filters.species));
+      if (filters?.search) baseConditions.push(like(breeds.nameEn, `%${filters.search}%`));
 
       let total = 0;
       if (baseConditions.length > 0) {
@@ -37,29 +32,28 @@ export class BreedService {
       }
 
       let allBreeds;
+      const order = sortOrder === 'asc' ? asc : desc;
+      const orderCol = sortBy === 'name' ? breeds.nameEn : breeds.createdAt;
       if (baseConditions.length > 0) {
         allBreeds = await db
           .select()
           .from(breeds)
           .where(and(...baseConditions))
-          .orderBy(sortOrder === 'asc' ? asc(sortBy === 'name' ? breeds.nameEn : breeds.createdAt) : desc(sortBy === 'name' ? breeds.nameEn : breeds.createdAt))
+          .orderBy(order(orderCol))
           .limit(limit)
           .offset(offset);
       } else {
         allBreeds = await db
           .select()
           .from(breeds)
-          .orderBy(sortOrder === 'asc' ? asc(sortBy === 'name' ? breeds.nameEn : breeds.createdAt) : desc(sortBy === 'name' ? breeds.nameEn : breeds.createdAt))
+          .orderBy(order(orderCol))
           .limit(limit)
           .offset(offset);
       }
 
-      // Get details for each breed
       const breedsWithDetails: BreedWithDetails[] = [];
-
       for (const breed of allBreeds) {
         let detail: DogBreedDetail | CatBreedDetail | null = null;
-
         if (breed.species === 'dog') {
           const dogDetail = await db
             .select()
@@ -75,38 +69,30 @@ export class BreedService {
             .limit(1);
           detail = catDetail[0] || null;
         }
-
-        breedsWithDetails.push({
-          breed,
-          detail
-        });
+        breedsWithDetails.push({ breed, detail });
       }
 
       let filteredBreeds = breedsWithDetails;
 
-      // Filter by dog-specific fields
       if (filters?.size || filters?.activityLevel || filters?.trainingDifficulty) {
-        filteredBreeds = filteredBreeds.filter(breed => {
-          if (breed.breed.species !== 'dog') return false;
-          
-          const dogDetail = breed.detail as DogBreedDetail;
+        filteredBreeds = filteredBreeds.filter(item => {
+          if (item.breed.species !== 'dog') return false;
+          const dogDetail = item.detail as DogBreedDetail;
           if (!dogDetail) return false;
-          
           if (filters?.size && dogDetail.size !== filters.size) return false;
           if (filters?.activityLevel && dogDetail.activityLevel !== filters.activityLevel) return false;
           if (filters?.trainingDifficulty && dogDetail.trainingDifficulty !== filters.trainingDifficulty) return false;
-          
           return true;
         });
       }
 
       if (filters?.groomingNeeds) {
-        filteredBreeds = filteredBreeds.filter(breed => {
-          if (breed.breed.species === 'dog') {
-            const dogDetail = breed.detail as DogBreedDetail;
+        filteredBreeds = filteredBreeds.filter(item => {
+          if (item.breed.species === 'dog') {
+            const dogDetail = item.detail as DogBreedDetail;
             return dogDetail?.groomingNeeds === filters.groomingNeeds;
-          } else if (breed.breed.species === 'cat') {
-            const catDetail = breed.detail as CatBreedDetail;
+          } else if (item.breed.species === 'cat') {
+            const catDetail = item.detail as CatBreedDetail;
             return catDetail?.groomingNeeds === filters.groomingNeeds;
           }
           return false;
@@ -116,10 +102,7 @@ export class BreedService {
       const actualTotal = filteredBreeds.length;
       const paginationInfo = calculatePaginationInfo(actualTotal, page, limit);
 
-      return {
-        data: filteredBreeds,
-        pagination: paginationInfo
-      };
+      return { data: filteredBreeds, pagination: paginationInfo };
     } catch (error) {
       throw new Error(`Failed to get breeds: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -133,9 +116,7 @@ export class BreedService {
         .where(eq(breeds.id, breedId))
         .limit(1);
 
-      if (breed.length === 0) {
-        throw new Error('Breed not found');
-      }
+      if (breed.length === 0) throw new Error('Breed not found');
 
       const breedData = breed[0];
       let detail: DogBreedDetail | CatBreedDetail | null = null;
@@ -156,10 +137,7 @@ export class BreedService {
         detail = catDetail[0] || null;
       }
 
-      return {
-        breed: breedData,
-        detail
-      };
+      return { breed: breedData, detail };
     } catch (error) {
       throw new Error(`Failed to get breed by ID: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -173,9 +151,7 @@ export class BreedService {
         .where(eq(breeds.nameEn, breedName))
         .limit(1);
 
-      if (breed.length === 0) {
-        throw new Error('Breed not found');
-      }
+      if (breed.length === 0) throw new Error('Breed not found');
 
       const breedData = breed[0];
       let detail: DogBreedDetail | CatBreedDetail | null = null;
@@ -196,10 +172,7 @@ export class BreedService {
         detail = catDetail[0] || null;
       }
 
-      return {
-        breed: breedData,
-        detail
-      };
+      return { breed: breedData, detail };
     } catch (error) {
       throw new Error(`Failed to get breed by name: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -208,7 +181,6 @@ export class BreedService {
   async createBreed(breedData: any, detailsData?: any) {
     try {
       const validatedBreedData = breedData;
-
       const newBreed = await db
         .insert(breeds)
         .values(validatedBreedData)
@@ -248,9 +220,7 @@ export class BreedService {
         .where(eq(breeds.id, breedId))
         .returning();
 
-      if (updatedBreed.length === 0) {
-        throw new Error('Breed not found');
-      }
+      if (updatedBreed.length === 0) throw new Error('Breed not found');
 
       const breed = updatedBreed[0];
       if (detailsData && breed.species === 'dog') {
@@ -280,9 +250,7 @@ export class BreedService {
         .delete(breeds)
         .where(eq(breeds.id, breedId))
         .returning();
-      if (deletedBreed.length === 0) {
-        throw new Error('Breed not found');
-      }
+      if (deletedBreed.length === 0) throw new Error('Breed not found');
       return { message: 'Breed deleted successfully' };
     } catch (error) {
       throw new Error(`Failed to delete breed: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -308,10 +276,7 @@ export class BreedService {
           .limit(1);
 
         if (dogDetail[0]) {
-          breedsWithDetails.push({
-            breed,
-            detail: dogDetail[0]
-          });
+          breedsWithDetails.push({ breed, detail: dogDetail[0] });
         }
       }
 
@@ -331,11 +296,13 @@ export class BreedService {
         .from(breeds)
         .where(like(breeds.nameEn, `%${searchTerm}%`));
 
+      const order = sortOrder === 'asc' ? asc : desc;
+      const orderCol = sortBy === 'name' ? breeds.nameEn : breeds.createdAt;
       const searchResults = await db
         .select()
         .from(breeds)
         .where(like(breeds.nameEn, `%${searchTerm}%`))
-        .orderBy(sortOrder === 'asc' ? asc(sortBy === 'name' ? breeds.nameEn : breeds.createdAt) : desc(sortBy === 'name' ? breeds.nameEn : breeds.createdAt))
+        .orderBy(order(orderCol))
         .limit(limit)
         .offset(offset);
 
@@ -360,16 +327,10 @@ export class BreedService {
           detail = catDetail[0] || null;
         }
 
-        breedsWithDetails.push({
-          breed,
-          detail
-        });
+        breedsWithDetails.push({ breed, detail });
       }
 
-      return {
-        data: breedsWithDetails,
-        pagination: calculatePaginationInfo(total, page, limit)
-      };
+      return { data: breedsWithDetails, pagination: calculatePaginationInfo(total, page, limit) };
     } catch (error) {
       throw new Error(`Failed to search breeds: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -377,13 +338,11 @@ export class BreedService {
 
   async getDogBreedsByActivityLevel(activityLevel: typeof ACTIVITY_LEVEL_ENUM[number]): Promise<BreedWithDetails[]> {
     try {
-      // Get dog breeds first
       const dogBreeds = await db
         .select()
         .from(breeds)
         .where(eq(breeds.species, 'dog'));
 
-      // Get details for each breed
       const breedsWithDetails: BreedWithDetails[] = [];
 
       for (const breed of dogBreeds) {
@@ -397,10 +356,7 @@ export class BreedService {
           .limit(1);
 
         if (dogDetail[0]) {
-          breedsWithDetails.push({
-            breed,
-            detail: dogDetail[0]
-          });
+          breedsWithDetails.push({ breed, detail: dogDetail[0] });
         }
       }
 
@@ -412,10 +368,8 @@ export class BreedService {
 
   async getBreedsByGroomingNeeds(groomingNeeds: typeof GROOMING_NEEDS_ENUM[number]): Promise<BreedWithDetails[]> {
     try {
-      // Get all breeds
       const allBreeds = await db.select().from(breeds);
 
-      // Get details for each breed
       const breedsWithDetails: BreedWithDetails[] = [];
 
       for (const breed of allBreeds) {
@@ -444,10 +398,7 @@ export class BreedService {
         }
 
         if (detail) {
-          breedsWithDetails.push({
-            breed,
-            detail
-          });
+          breedsWithDetails.push({ breed, detail });
         }
       }
 
@@ -459,13 +410,11 @@ export class BreedService {
 
   async getDogBreedsByTrainingDifficulty(trainingDifficulty: typeof TRAINING_DIFFICULTY_ENUM[number]): Promise<BreedWithDetails[]> {
     try {
-      // Get dog breeds first
       const dogBreeds = await db
         .select()
         .from(breeds)
         .where(eq(breeds.species, 'dog'));
 
-      // Get details for each breed
       const breedsWithDetails: BreedWithDetails[] = [];
 
       for (const breed of dogBreeds) {
@@ -479,10 +428,7 @@ export class BreedService {
           .limit(1);
 
         if (dogDetail[0]) {
-          breedsWithDetails.push({
-            breed,
-            detail: dogDetail[0]
-          });
+          breedsWithDetails.push({ breed, detail: dogDetail[0] });
         }
       }
 
@@ -494,26 +440,23 @@ export class BreedService {
 
   async getBreedsBySpecies(species: typeof SPECIES_ENUM[number]): Promise<BreedWithDetails[]> {
     try {
-      // Get breeds by species
       const speciesBreeds = await db
         .select()
         .from(breeds)
         .where(eq(breeds.species, species));
 
-      // Get details for each breed
-      const breedsWithDetails: BreedWithDetails[] = [];
-
+      const result: BreedWithDetails[] = [];
       for (const breed of speciesBreeds) {
         let detail: DogBreedDetail | CatBreedDetail | null = null;
 
-        if (species === 'dog') {
+        if (breed.species === 'dog') {
           const dogDetail = await db
             .select()
             .from(dogBreedDetails)
             .where(eq(dogBreedDetails.breedId, breed.id))
             .limit(1);
           detail = dogDetail[0] || null;
-        } else if (species === 'cat') {
+        } else if (breed.species === 'cat') {
           const catDetail = await db
             .select()
             .from(catBreedDetails)
@@ -522,13 +465,10 @@ export class BreedService {
           detail = catDetail[0] || null;
         }
 
-        breedsWithDetails.push({
-          breed,
-          detail
-        });
+        result.push({ breed, detail });
       }
 
-      return breedsWithDetails;
+      return result;
     } catch (error) {
       throw new Error(`Failed to get breeds by species: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -666,12 +606,10 @@ export class BreedService {
     }
   }
 
-  // Method to clear cache (useful for admin operations)
   clearBreedNamesCache(): void {
     this.breedNamesCache.clear();
   }
 
-  // Method to get cache stats (useful for monitoring)
   getCacheStats(): { size: number; keys: string[] } {
     return {
       size: this.breedNamesCache.size,
@@ -679,7 +617,6 @@ export class BreedService {
     };
   }
 
-  // Bulk insert breeds
   async bulkInsertBreeds(breedData: Array<{
     species: 'dog' | 'cat';
     nameEn: string;
@@ -691,21 +628,14 @@ export class BreedService {
     originCountry?: string;
   }>) {
     try {
-      console.log(`BreedService: Bulk inserting ${breedData.length} breeds...`);
-      
       const insertedBreeds = await db
         .insert(breeds)
         .values(breedData)
         .returning();
 
-      console.log(`BreedService: Successfully inserted ${insertedBreeds.length} breeds`);
-      
-      // Clear cache after bulk insert
       this.clearBreedNamesCache();
-      
       return insertedBreeds;
     } catch (error) {
-      console.error('BreedService: Error bulk inserting breeds:', error);
       throw new Error(`Failed to bulk insert breeds: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

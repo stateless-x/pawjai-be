@@ -1,9 +1,45 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { requireAuth, AuthenticatedRequest } from '../middleware/auth';
-import { userService } from '../services';
-import { ApiResponses } from '../utils';
+import { requireAuth } from '@/middleware/auth';
+import { AuthenticatedRequest } from '@/types';
+import { userService, petService, subscriptionService } from '@/services';
+import { ApiResponses } from '@/utils';
 
 export default async function userRoutes(fastify: FastifyInstance) {
+  // Get dashboard data (profile, subscription, pets) in one call
+  fastify.get('/dashboard', {
+    preHandler: requireAuth(),
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const authenticatedRequest = request as AuthenticatedRequest;
+      const userId = authenticatedRequest.user.id;
+      
+      fastify.log.info(`Dashboard request for user: ${userId}`);
+      
+      // Fetch all dashboard data in parallel, ensuring defaults exist
+      const [profileResult, subscriptionResult, petsResult] = await Promise.allSettled([
+        userService.ensureUserProfile(userId), // Ensure profile exists
+        subscriptionService.ensure(userId), // Ensure subscription exists
+        petService.getMyPets(userId)
+      ]);
+
+      // Log the results for debugging
+      fastify.log.info('Profile result:', { status: profileResult.status, value: profileResult.status === 'fulfilled' ? 'success' : profileResult.reason });
+      fastify.log.info('Subscription result:', { status: subscriptionResult.status, value: subscriptionResult.status === 'fulfilled' ? subscriptionResult.value : subscriptionResult.reason });
+      fastify.log.info('Pets result:', { status: petsResult.status, value: petsResult.status === 'fulfilled' ? `${petsResult.value.length} pets` : petsResult.reason });
+
+      const dashboardData = {
+        profile: profileResult.status === 'fulfilled' ? profileResult.value : null,
+        subscription: subscriptionResult.status === 'fulfilled' ? subscriptionResult.value : null,
+        pets: petsResult.status === 'fulfilled' ? petsResult.value : []
+      };
+
+      return reply.send(ApiResponses.success(dashboardData, 'Dashboard data retrieved successfully'));
+    } catch (error) {
+      fastify.log.error('Error in /dashboard endpoint:', error);
+      return reply.status(500).send(ApiResponses.internalError('Failed to retrieve dashboard data'));
+    }
+  });
+
   // Get user profile (requires authentication)
   fastify.get('/profile', {
     preHandler: requireAuth(),
@@ -12,13 +48,10 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const authenticatedRequest = request as AuthenticatedRequest;
       const userId = authenticatedRequest.user.id;
       
-      const profile = await userService.getUserProfile(userId);
+      const profile = await userService.ensureUserProfile(userId);
       return reply.send(ApiResponses.success(profile, 'User profile retrieved successfully'));
     } catch (error) {
       fastify.log.error(error);
-      if (error instanceof Error && error.message.includes('not found')) {
-        return reply.status(404).send(ApiResponses.notFound('User profile'));
-      }
       return reply.status(500).send(ApiResponses.internalError('Failed to retrieve user profile'));
     }
   });

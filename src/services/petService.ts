@@ -1,9 +1,9 @@
-import { db } from '../db';
-import { pets, breeds } from '../db/schema';
+import { db } from '@/db';
+import { pets, breeds } from '@/db/schema';
 import { eq, and, desc, asc, count } from 'drizzle-orm';
 import { z } from 'zod';
-import { speciesSchema, genderSchema, Species } from '../constants';
-import { PaginationOptions, PaginatedResponse, validatePaginationOptions, calculatePaginationInfo, calculateOffset } from '../utils';
+import { speciesSchema, genderSchema, Species } from '@/constants';
+import { PaginationOptions, PaginatedResponse, validatePaginationOptions, calculatePaginationInfo, calculateOffset } from '@/utils';
 
 // Validation schemas
 const createPetSchema = z.object({
@@ -24,8 +24,8 @@ const updatePetSchema = createPetSchema.partial().omit({ name: true });
 const onboardingPetSchema = z.object({
   petName: z.string().min(1, "Pet name is required"),
   petType: z.enum(["dog", "cat", "other"]),
-  petBreed: z.string().optional(), // For "other" species
-  breedId: z.string().uuid().optional(), // For known breeds
+  petBreed: z.string().optional(),
+  breedId: z.string().uuid().optional(),
   petGender: z.enum(["male", "female", "unknown"]),
   neutered: z.enum(["yes", "no", "not_sure"]),
   petBirthDay: z.string().optional(),
@@ -38,8 +38,6 @@ export class PetService {
   // Normal user methods
   async getMyPets(userId: string) {
     try {
-      console.log(`PetService: Getting pets for user ${userId}`);
-      
       const userPets = await db
         .select({
           pet: {
@@ -63,11 +61,8 @@ export class PetService {
         .leftJoin(breeds, eq(pets.breedId, breeds.id))
         .where(eq(pets.userId, userId));
 
-      console.log(`PetService: Found ${userPets.length} pets for user ${userId}`);
       return userPets;
     } catch (error) {
-      console.error('PetService: Error getting user pets:', error);
-      console.error('PetService: Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       throw new Error(`Failed to get user pets: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -102,7 +97,6 @@ export class PetService {
         throw new Error('Pet not found');
       }
 
-      // If userId is provided, check if the user owns this pet
       if (userId && pet[0].pet.userId !== userId) {
         throw new Error('Access denied: You can only access your own pets');
       }
@@ -115,24 +109,17 @@ export class PetService {
 
   async createPet(userId: string, petData: z.infer<typeof createPetSchema>) {
     try {
-      console.log('PetService: Creating pet with data:', petData);
-      console.log('PetService: User ID:', userId);
-      
       const validatedData = createPetSchema.parse(petData);
-      console.log('PetService: Validated data:', validatedData);
 
-      // Check if breedId exists in the database if provided
       if (validatedData.breedId) {
         const breedExists = await db
           .select({ id: breeds.id })
           .from(breeds)
           .where(eq(breeds.id, validatedData.breedId))
           .limit(1);
-        
         if (breedExists.length === 0) {
           throw new Error(`Breed with ID ${validatedData.breedId} not found`);
         }
-        console.log('PetService: Breed validation passed');
       }
 
       const newPet = await db
@@ -143,11 +130,8 @@ export class PetService {
         })
         .returning();
 
-      console.log('PetService: Created pet:', newPet[0]);
       return newPet[0];
     } catch (error) {
-      console.error('PetService: Error creating pet:', error);
-      console.error('PetService: Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       throw new Error(`Failed to create pet: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -156,14 +140,12 @@ export class PetService {
   async createPetFromOnboarding(userId: string, petData: z.infer<typeof onboardingPetSchema>) {
     try {
       const validatedData = onboardingPetSchema.parse(petData);
-      
-      // Convert date parts to ISO date string
+
       let dateOfBirth: string | undefined;
       if (validatedData.petBirthDay && validatedData.petBirthMonth && validatedData.petBirthYear) {
         dateOfBirth = `${validatedData.petBirthYear}-${validatedData.petBirthMonth}-${validatedData.petBirthDay}`;
       }
 
-      // Convert neutered status to boolean
       const neutered = validatedData.neutered === 'yes' ? true : 
                       validatedData.neutered === 'no' ? false : 
                       null;
@@ -195,7 +177,6 @@ export class PetService {
     try {
       const validatedData = updatePetSchema.parse(petData);
 
-      // First check if the pet exists and belongs to the user
       const existingPet = await db
         .select()
         .from(pets)
@@ -227,7 +208,6 @@ export class PetService {
 
   async deletePet(petId: string, userId: string) {
     try {
-      // First check if the pet exists and belongs to the user
       const existingPet = await db
         .select()
         .from(pets)
@@ -337,10 +317,8 @@ export class PetService {
       const { page, limit, sortBy, sortOrder } = validatePaginationOptions(options || {});
       const offset = calculateOffset(page, limit);
 
-      // Get total count
       const [{ count: total }] = await db.select({ count: count() }).from(pets);
 
-      // Get paginated data
       const sortColumn = sortBy === 'name' ? pets.name : 
                         sortBy === 'species' ? pets.species : 
                         pets.createdAt;
