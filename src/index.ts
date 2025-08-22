@@ -12,6 +12,7 @@ import userRoutes from './routes/users';
 import petRoutes from './routes/pets';
 import breedRoutes from './routes/breeds';
 import subscriptionRoutes from './routes/subscriptions';
+import petRecordRoutes from './routes/petRecord';
 
 config();
 
@@ -31,7 +32,7 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 await fastify.register(cors, {
   origin: allowedOrigins,
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 });
 
@@ -51,6 +52,7 @@ await fastify.register(userRoutes, { prefix: '/api/users' });
 await fastify.register(petRoutes, { prefix: '/api/pets' });
 await fastify.register(breedRoutes, { prefix: '/api/breeds' });
 await fastify.register(subscriptionRoutes, { prefix: '/api/subscriptions' });
+await fastify.register(petRecordRoutes, { prefix: '/api' });
 
 // Error handler
 fastify.setErrorHandler((error, request, reply) => {

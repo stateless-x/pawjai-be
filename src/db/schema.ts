@@ -1,11 +1,12 @@
-import { pgTable, uuid, text, timestamp, date, numeric, integer, boolean, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, date, numeric, integer, boolean, pgEnum, jsonb, index } from 'drizzle-orm/pg-core';
 import { 
   GENDER_ENUM, 
   SPECIES_ENUM, 
   SIZE_ENUM, 
   ACTIVITY_LEVEL_ENUM, 
   GROOMING_NEEDS_ENUM, 
-  TRAINING_DIFFICULTY_ENUM 
+  TRAINING_DIFFICULTY_ENUM,
+  RECORD_TYPE_ENUM
 } from '../constants';
 
 // === ENUMS ===
@@ -16,6 +17,7 @@ export const activityLevelEnum = pgEnum('activity_level', ACTIVITY_LEVEL_ENUM);
 export const groomingNeedsEnum = pgEnum('grooming_needs', GROOMING_NEEDS_ENUM);
 export const trainingDifficultyEnum = pgEnum('training_difficulty', TRAINING_DIFFICULTY_ENUM);
 export const authStepEnum = pgEnum('auth_step', ['idle','signing-up','signing-in','email-confirmation','onboarding','completed']);
+export const recordTypeEnum = pgEnum('record_type', RECORD_TYPE_ENUM);
 
 // === USER PROFILES (Identity) ===
 export const userProfiles = pgTable('user_profiles', {
@@ -143,6 +145,92 @@ export const pets = pgTable('pets', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+// === LOOKUP TABLES FOR PET RECORDS ===
+export const activityTypes = pgTable('activity_types', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  species: speciesEnum('species'),
+  nameEn: text('name_en').notNull(),
+  nameTh: text('name_th').notNull(),
+  descriptionEn: text('description_en'),
+  descriptionTh: text('description_th'),
+  iconUrl: text('icon_url'),
+  isActive: boolean('is_active').default(true),
+  sortOrder: integer('sort_order').default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const symptomTypes = pgTable('symptom_types', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  species: speciesEnum('species'),
+  nameEn: text('name_en').notNull(),
+  nameTh: text('name_th').notNull(),
+  descriptionEn: text('description_en'),
+  descriptionTh: text('description_th'),
+  iconUrl: text('icon_url'),
+  severity: text('severity'), // mild, moderate, severe, emergency
+  isActive: boolean('is_active').default(true),
+  sortOrder: integer('sort_order').default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const vetVisitTypes = pgTable('vet_visit_types', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  species: speciesEnum('species'),
+  nameEn: text('name_en').notNull(),
+  nameTh: text('name_th').notNull(),
+  descriptionEn: text('description_en'),
+  descriptionTh: text('description_th'),
+  iconUrl: text('icon_url'),
+  isRoutine: boolean('is_routine').default(false),
+  isActive: boolean('is_active').default(true),
+  sortOrder: integer('sort_order').default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const medicationTypes = pgTable('medication_types', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  species: speciesEnum('species'),
+  nameEn: text('name_en').notNull(),
+  nameTh: text('name_th').notNull(),
+  descriptionEn: text('description_en'),
+  descriptionTh: text('description_th'),
+  iconUrl: text('icon_url'),
+  category: text('category'), // preventive, treatment, supplement
+  requiresPrescription: boolean('requires_prescription').default(false),
+  isActive: boolean('is_active').default(true),
+  sortOrder: integer('sort_order').default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// === PET RECORDS ===
+export const petRecords = pgTable('pet_records', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  petId: uuid('pet_id').notNull().references(() => pets.id),
+  recordType: recordTypeEnum('record_type').notNull(),
+  typeId: uuid('type_id').notNull(), // References activity_types, symptom_types, etc.
+  note: text('note'),
+  vibe: integer('vibe'), // 1-5 rating
+  imageUrl: text('image_url').array(),
+  metadata: jsonb('metadata'), // Flexible JSON storage for type-specific data
+  occurredAt: timestamp('occurred_at').notNull(),
+  isDeleted: boolean('is_deleted').default(false),
+  deletedAt: timestamp('deleted_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (table) => ({
+  // Indices for performance
+  petIdRecordTypeCreatedAtIdx: index('pet_records_pet_id_record_type_created_at_idx')
+    .on(table.petId, table.recordType, table.createdAt),
+  petIdOccurredAtIdx: index('pet_records_pet_id_occurred_at_idx')
+    .on(table.petId, table.occurredAt),
+  recordTypeTypeIdIdx: index('pet_records_record_type_type_id_idx')
+    .on(table.recordType, table.typeId),
+}));
+
 // === TYPES ===
 export type UserProfile = typeof userProfiles.$inferSelect;
 export type NewUserProfile = typeof userProfiles.$inferInsert;
@@ -165,3 +253,19 @@ export type NewCatBreedDetail = typeof catBreedDetails.$inferInsert;
 
 export type Pet = typeof pets.$inferSelect;
 export type NewPet = typeof pets.$inferInsert;
+
+// Pet Record Types
+export type ActivityType = typeof activityTypes.$inferSelect;
+export type NewActivityType = typeof activityTypes.$inferInsert;
+
+export type SymptomType = typeof symptomTypes.$inferSelect;
+export type NewSymptomType = typeof symptomTypes.$inferInsert;
+
+export type VetVisitType = typeof vetVisitTypes.$inferSelect;
+export type NewVetVisitType = typeof vetVisitTypes.$inferInsert;
+
+export type MedicationType = typeof medicationTypes.$inferSelect;
+export type NewMedicationType = typeof medicationTypes.$inferInsert;
+
+export type PetRecord = typeof petRecords.$inferSelect;
+export type NewPetRecord = typeof petRecords.$inferInsert;

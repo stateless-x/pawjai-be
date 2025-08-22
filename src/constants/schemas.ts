@@ -9,6 +9,8 @@ import {
   ACTIVITY_LEVEL_ENUM,
   GROOMING_NEEDS_ENUM,
   TRAINING_DIFFICULTY_ENUM,
+  RECORD_TYPE_ENUM,
+  VIBE_RATING_ENUM,
   SUBSCRIPTION_PLAN_ENUM,
   SUBSCRIPTION_STATUS_ENUM,
   BILLING_CYCLE_ENUM
@@ -20,6 +22,10 @@ export const sizeSchema = z.enum(SIZE_ENUM);
 export const activityLevelSchema = z.enum(ACTIVITY_LEVEL_ENUM);
 export const groomingNeedsSchema = z.enum(GROOMING_NEEDS_ENUM);
 export const trainingDifficultySchema = z.enum(TRAINING_DIFFICULTY_ENUM);
+
+// Pet Records
+export const recordTypeSchema = z.enum(RECORD_TYPE_ENUM);
+export const vibeRatingSchema = z.number().int().min(1).max(5);
 
 // Subscriptions
 export const subscriptionPlanSchema = z.enum(SUBSCRIPTION_PLAN_ENUM);
@@ -71,6 +77,45 @@ export const breedWithDetailsSchema = z.object({
   dogDetails: dogBreedDetailSchema.optional(),
   catDetails: catBreedDetailSchema.optional(),
 });
+
+// === PET RECORD SCHEMAS ===
+export const createPetRecordSchema = z.object({
+  recordType: recordTypeSchema,
+  typeId: z.string().uuid(),
+  note: z.string().optional(),
+  vibe: vibeRatingSchema.optional(),
+  imageUrl: z.array(z.string().url()).optional(),
+  metadata: z.record(z.any()).optional(),
+  occurredAt: z.string().datetime(),
+});
+
+export const updatePetRecordSchema = z.object({
+  note: z.string().optional(),
+  vibe: vibeRatingSchema.optional(),
+  metadata: z.record(z.any()).optional(),
+});
+
+export const petRecordQuerySchema = z.object({
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  kind: recordTypeSchema.optional(),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+  offset: z.coerce.number().int().nonnegative().default(0),
+});
+
+// === LOOKUP TYPE SCHEMAS ===
+export const createLookupTypeSchema = z.object({
+  species: speciesSchema.optional(),
+  nameEn: z.string().min(1),
+  nameTh: z.string().min(1),
+  descriptionEn: z.string().optional(),
+  descriptionTh: z.string().optional(),
+  iconUrl: z.string().url().optional(),
+  isActive: z.boolean().default(true),
+  sortOrder: z.number().int().default(0),
+});
+
+export const updateLookupTypeSchema = createLookupTypeSchema.partial();
 
 // === SUBSCRIPTION SCHEMAS ===
 export const subscriptionCreateSchema = z.object({

@@ -9,7 +9,12 @@ import {
   breeds, 
   pets,
   dogBreedDetails,
-  catBreedDetails
+  catBreedDetails,
+  activityTypes,
+  symptomTypes,
+  vetVisitTypes,
+  medicationTypes,
+  petRecords
 } from '../db/schema';
 
 export interface SeedOptions {
@@ -17,6 +22,7 @@ export interface SeedOptions {
   skipBreeds?: boolean;
   skipUsers?: boolean;
   skipPets?: boolean;
+  skipPetRecordLookups?: boolean;
   skipSetup?: boolean;
 }
 
@@ -27,7 +33,16 @@ export async function factoryReset() {
   
   try {
     // Check if tables exist and clear data in the correct order to respect foreign key constraints
-    // 1. Clear pets first (depends on breeds and users)
+    // 1. Clear pet records first (depends on pets and lookup tables)
+    console.log('📝 Clearing pet records...');
+    try {
+      await db.delete(petRecords);
+      console.log('✅ Pet records cleared');
+    } catch (error) {
+      console.log('⚠️ Pet records table does not exist or is empty');
+    }
+    
+    // 2. Clear pets (depends on breeds and users)
     console.log('🐕 Clearing pets...');
     try {
       await db.delete(pets);
@@ -78,6 +93,18 @@ export async function factoryReset() {
       console.log('✅ User profiles cleared');
     } catch (error) {
       console.log('⚠️ User profiles table does not exist or is empty');
+    }
+    
+    // 6. Clear pet record lookup tables (no dependencies)
+    console.log('📋 Clearing pet record lookup tables...');
+    try {
+      await db.delete(medicationTypes);
+      await db.delete(vetVisitTypes);
+      await db.delete(symptomTypes);
+      await db.delete(activityTypes);
+      console.log('✅ Pet record lookup tables cleared');
+    } catch (error) {
+      console.log('⚠️ Pet record lookup tables do not exist or are empty');
     }
     
     console.log('✅ Factory reset completed successfully!');
@@ -255,6 +282,7 @@ export async function runSeeds(options: SeedOptions = {}) {
     skipBreeds = false,
     skipUsers = false,
     skipPets = false,
+    skipPetRecordLookups = false,
     skipSetup = false
   } = options;
 
@@ -271,6 +299,7 @@ export async function runSeeds(options: SeedOptions = {}) {
     const { seedUserProfiles } = await import('./users');
     const { seedUserPersonalization } = await import('./userPersonalization');
     const { seedPets } = await import('./pets');
+    const { seedAllPetRecordLookups } = await import('./petRecordLookups');
 
     // Seed breeds first (pets depend on breeds)
     if (!skipBreeds) {
@@ -293,6 +322,12 @@ export async function runSeeds(options: SeedOptions = {}) {
       await seedPets({ clearExisting });
     }
 
+    // Seed pet record lookup tables
+    if (!skipPetRecordLookups) {
+      console.log('📋 Seeding pet record lookups...');
+      await seedAllPetRecordLookups();
+    }
+
     console.log('✅ Database seeding completed successfully!');
   } catch (error) {
     console.error('❌ Database seeding failed:', error);
@@ -304,4 +339,11 @@ export async function runSeeds(options: SeedOptions = {}) {
 export { seedBreeds } from './breeds';
 export { seedUserProfiles } from './users';
 export { seedUserPersonalization } from './userPersonalization';
-export { seedPets } from './pets'; 
+export { seedPets } from './pets';
+export { 
+  seedAllPetRecordLookups,
+  seedActivityTypes,
+  seedSymptomTypes,
+  seedVetVisitTypes,
+  seedMedicationTypes
+} from './petRecordLookups'; 

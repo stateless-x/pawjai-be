@@ -19,6 +19,13 @@ export type GroomingNeeds = typeof GROOMING_NEEDS_ENUM[number];
 export const TRAINING_DIFFICULTY_ENUM = ['easy', 'moderate', 'hard'] as const;
 export type TrainingDifficulty = typeof TRAINING_DIFFICULTY_ENUM[number];
 
+// === PET RECORD ENUMS ===
+export const RECORD_TYPE_ENUM = ['activity', 'symptom', 'vet_visit', 'medication'] as const;
+export type RecordType = typeof RECORD_TYPE_ENUM[number];
+
+export const VIBE_RATING_ENUM = [1, 2, 3, 4, 5] as const;
+export type VibeRating = typeof VIBE_RATING_ENUM[number];
+
 // === BREED DETAIL TYPES ===
 // These help identify which detail table to use for each species
 export const BREED_DETAIL_TYPES = {

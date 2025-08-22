@@ -8,12 +8,16 @@ import {
   ACTIVITY_LEVEL_ENUM,
   GROOMING_NEEDS_ENUM,
   TRAINING_DIFFICULTY_ENUM,
+  RECORD_TYPE_ENUM,
+  VIBE_RATING_ENUM,
   Gender,
   Species,
   Size,
   ActivityLevel,
   GroomingNeeds,
   TrainingDifficulty,
+  RecordType,
+  VibeRating,
   BREED_DETAIL_TYPES,
   BreedDetailType,
   DOG_SPECIFIC_FIELDS,
@@ -79,5 +83,14 @@ export const isValidFieldForSpecies = (field: string, species: Species): boolean
   if (isCatBreed(species)) {
     return [...SHARED_BREED_FIELDS, ...CAT_SPECIFIC_FIELDS].includes(field as any);
   }
-  return SHARED_BREED_FIELDS.includes(field as any);
+  return false;
+};
+
+// === PET RECORD VALIDATION HELPERS ===
+export const isValidRecordType = (value: string): value is RecordType => {
+  return RECORD_TYPE_ENUM.includes(value as RecordType);
+};
+
+export const isValidVibeRating = (value: number): value is VibeRating => {
+  return VIBE_RATING_ENUM.includes(value as VibeRating);
 }; 
