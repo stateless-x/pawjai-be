@@ -81,6 +81,47 @@ export class BunnyService {
   getPetProfileImagePath(userId: string, petId: string): string {
     return `users/${userId}/pets/${petId}`;
   }
+
+  getStoragePathFromUrl(imageUrl: string): string | null {
+    try {
+      const url = new URL(imageUrl);
+      if (url.hostname === BUNNY_PULL_ZONE_HOSTNAME) {
+        // The path will start with a '/', so we remove it.
+        return url.pathname.substring(1);
+      }
+      return null;
+    } catch (error) {
+      console.error('[BunnyService] Invalid image URL:', imageUrl, error);
+      return null;
+    }
+  }
+
+  async delete(path: string): Promise<void> {
+    const deleteUrl = this.getBunnyUrl(path);
+    console.log(`[BunnyService] Deleting from URL: ${deleteUrl}`);
+
+    try {
+      const response = await fetch(deleteUrl, {
+        method: 'DELETE',
+        headers: {
+          AccessKey: BUNNY_STORAGE_ACCESS_KEY,
+        },
+      });
+
+      // A 404 means the file is already gone, which is a success case for deletion.
+      if (!response.ok && response.status !== 404) {
+        const errorText = await response.text();
+        console.error(`[BunnyService] Error deleting from Bunny.net. Status: ${response.status} ${response.statusText}`);
+        console.error(`[BunnyService] Error Body: ${errorText}`);
+        throw new Error(`Failed to delete from Bunny.net: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+      
+      console.log(`[BunnyService] Successfully deleted ${path} or it did not exist.`);
+    } catch (error) {
+      console.error(`[BunnyService] A network or fetch error occurred during deletion of ${path}:`, error);
+      throw error;
+    }
+  }
 }
 
 export const bunnyService = new BunnyService(); 

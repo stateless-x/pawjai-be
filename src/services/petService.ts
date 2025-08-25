@@ -1,9 +1,10 @@
 import { db } from '@/db';
-import { pets, breeds } from '@/db/schema';
+import { pets, breeds, petRecords } from '@/db/schema';
 import { eq, and, desc, asc, count } from 'drizzle-orm';
 import { z } from 'zod';
 import { speciesSchema, genderSchema, Species } from '@/constants';
 import { PaginationOptions, PaginatedResponse, validatePaginationOptions, calculatePaginationInfo, calculateOffset } from '@/utils';
+import { bunnyService } from '@/utils/bunny';
 
 // Validation schemas
 const createPetSchema = z.object({
@@ -229,20 +230,37 @@ export class PetService {
 
   async deletePet(petId: string, userId: string) {
     try {
-      const existingPet = await db
+      const [existingPet] = await db
         .select()
         .from(pets)
         .where(eq(pets.id, petId))
         .limit(1);
 
-      if (existingPet.length === 0) {
+      if (!existingPet) {
         throw new Error('Pet not found');
       }
 
-      if (existingPet[0].userId !== userId) {
+      if (existingPet.userId !== userId) {
         throw new Error('Access denied: You can only delete your own pets');
       }
+      
+      // Step 1: Delete associated pet records to satisfy foreign key constraints
+      await db.delete(petRecords).where(eq(petRecords.petId, petId));
 
+      // Step 2: If the pet has an image, try to delete it from Bunny.net
+      if (existingPet.imageUrl) {
+        try {
+          const storagePath = bunnyService.getStoragePathFromUrl(existingPet.imageUrl);
+          if (storagePath) {
+            await bunnyService.delete(storagePath);
+          }
+        } catch (bunnyError) {
+          // Log the error but don't block the pet deletion from the DB
+          console.error(`Failed to delete image for pet ${petId} from Bunny.net, but proceeding with DB deletion.`, bunnyError);
+        }
+      }
+
+      // Step 3: Delete the pet itself
       await db
         .delete(pets)
         .where(eq(pets.id, petId));
