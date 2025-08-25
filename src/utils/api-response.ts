@@ -194,10 +194,18 @@ export const ApiResponses = {
   forbidden: (message?: string) => createForbiddenResponse(message),
   internalError: (message?: string) => createInternalServerErrorResponse(message),
   badRequest: (message?: string) => createBadRequestResponse(message),
+  gone: (message?: string) => createGoneResponse(message),
   
   // Generic error
   error: (message: string, code?: string, details?: any) => createErrorResponse(message, code, details)
 };
+
+export function createGoneResponse(
+  message: string = 'This resource is no longer available',
+  meta?: Partial<ApiResponse['meta']>
+): ErrorApiResponse {
+  return createErrorResponse(message, 'GONE', undefined, meta);
+}
 
 // === RESPONSE CODES ===
 export const ResponseCodes = {

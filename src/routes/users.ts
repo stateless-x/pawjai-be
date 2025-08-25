@@ -7,6 +7,16 @@ import { z } from 'zod';
 import { bunnyService } from '@/utils/bunny';
 import { randomUUID } from 'crypto';
 
+const startPhoneVerificationBodySchema = z.object({
+  phoneNumber: z.string(),
+});
+
+const verifyPhoneVerificationBodySchema = z.object({
+  code: z.string(),
+  profile: z.any(), // Using any() here because we will parse with a stricter schema in the service
+});
+
+
 export default async function userRoutes(fastify: FastifyInstance) {
   // Get dashboard data (profile, subscription, pets) in one call
   fastify.get('/dashboard', {

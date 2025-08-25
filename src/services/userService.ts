@@ -266,9 +266,10 @@ export class UserService {
         .limit(1);
       console.log('Existing profile found:', existingProfile.length > 0);
 
+      let savedProfile;
       if (existingProfile.length > 0) {
         console.log('Updating existing profile...');
-        const updatedProfile = await db
+        [savedProfile] = await db
           .update(userProfiles)
           .set({
             ...profilePayload,
@@ -277,17 +278,9 @@ export class UserService {
           .where(eq(userProfiles.id, userId))
           .returning();
         console.log('Profile updated successfully');
-
-        try {
-          await subscriptionService.ensure(userId);
-        } catch (subscriptionError) {
-          console.error('Subscription service error:', subscriptionError);
-          // Don't fail the profile creation if subscription fails
-        }
-        return updatedProfile[0];
       } else {
         console.log('Creating new profile...');
-        const newProfile = await db
+        [savedProfile] = await db
           .insert(userProfiles)
           .values({
             id: userId,
@@ -295,15 +288,12 @@ export class UserService {
           })
           .returning();
         console.log('Profile created successfully');
-
-        try {
-          await subscriptionService.ensure(userId);
-        } catch (subscriptionError) {
-          console.error('Subscription service error:', subscriptionError);
-          // Don't fail the profile creation if subscription fails
-        }
-        return newProfile[0];
       }
+
+      await this.upsertAuthState(userId, { currentAuthStep: 'onboarding' });
+      await subscriptionService.ensure(userId);
+
+      return savedProfile;
     } catch (error) {
       console.error('Error in saveOnboardingProfile:', error);
       console.error('Error details:', {
