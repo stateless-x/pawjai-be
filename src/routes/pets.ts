@@ -1,29 +1,12 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { requireAuth } from '@/middleware/auth';
 import { AuthenticatedRequest } from '@/types';
 import { petService } from '@/services';
 import { ApiResponses } from '@/utils';
+import { randomUUID } from 'crypto';
+import { bunnyService } from '@/utils/bunny';
 
 export default async function petRoutes(fastify: FastifyInstance) {
-  // Get all pets for the authenticated user
-  fastify.get('/my-pets', {
-    preHandler: requireAuth(),
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const authenticatedRequest = request as AuthenticatedRequest;
-      const userId = authenticatedRequest.user.id;
-      
-      fastify.log.info(`Fetching pets for user: ${userId}`);
-      
-      const userPets = await petService.getMyPets(userId);
-      return reply.send(ApiResponses.success(userPets, 'User pets retrieved successfully'));
-    } catch (error) {
-      fastify.log.error('Error in /my-pets endpoint:', error);
-      fastify.log.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-      return reply.status(500).send(ApiResponses.internalError('Failed to retrieve user pets'));
-    }
-  });
-
   // Get all pets for a specific user (admin only)
   fastify.get('/user/:userId', {
     preHandler: requireAuth(),
@@ -65,6 +48,64 @@ export default async function petRoutes(fastify: FastifyInstance) {
         return reply.status(403).send(ApiResponses.forbidden(error.message));
       }
       return reply.status(500).send(ApiResponses.internalError('Failed to retrieve pet'));
+    }
+  });
+
+  fastify.post('/:petId/image', {
+    preHandler: requireAuth(),
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { petId } = request.params as { petId: string };
+    const authenticatedRequest = request as AuthenticatedRequest;
+    const userId = authenticatedRequest.user.id;
+
+    const data = await request.file();
+    if (!data) {
+      return reply.status(400).send(ApiResponses.badRequest('No file uploaded'));
+    }
+
+    try {
+      fastify.log.info(`[Pet Upload] Step 1: Verifying pet ${petId} for user ${userId}`);
+      // First, verify the pet belongs to the user
+      await petService.getPetById(petId, userId);
+
+      fastify.log.info(`[Pet Upload] Step 2: Converting uploaded file to buffer`);
+      const buffer = await data.toBuffer();
+      
+      fastify.log.info(`[Pet Upload] Step 3: Calling BunnyService to upload`);
+      const fileName = `${randomUUID()}-${data.filename}`;
+      const path = bunnyService.getPetProfileImagePath(userId, petId);
+      const imageUrl = await bunnyService.upload(buffer, path, fileName);
+      
+      fastify.log.info(`[Pet Upload] Step 4: Updating pet profile in database`);
+      await petService.updatePetProfileImage(petId, userId, imageUrl);
+
+      fastify.log.info(`[Pet Upload] Step 5: Sending success response`);
+      return reply.send(ApiResponses.success({ imageUrl }, 'Pet profile image uploaded successfully'));
+    } catch (error) {
+      fastify.log.error(error, `A failure occurred during pet image upload for petId: ${petId}`);
+      if (error instanceof Error && (error.message.includes('not found') || error.message.includes('Access denied'))) {
+        return reply.status(404).send(ApiResponses.notFound('Pet', petId));
+      }
+      return reply.status(500).send(ApiResponses.internalError('Failed to upload pet image'));
+    }
+  });
+
+  // Get all pets for the authenticated user
+  fastify.get('/my-pets', {
+    preHandler: requireAuth(),
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const authenticatedRequest = request as AuthenticatedRequest;
+      const userId = authenticatedRequest.user.id;
+      
+      fastify.log.info(`Fetching pets for user: ${userId}`);
+      
+      const userPets = await petService.getMyPets(userId);
+      return reply.send(ApiResponses.success(userPets, 'User pets retrieved successfully'));
+    } catch (error) {
+      fastify.log.error('Error in /my-pets endpoint:', error);
+      fastify.log.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      return reply.status(500).send(ApiResponses.internalError('Failed to retrieve user pets'));
     }
   });
 

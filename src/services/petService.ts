@@ -206,6 +206,27 @@ export class PetService {
     }
   }
 
+  async updatePetProfileImage(petId: string, userId: string, imageUrl: string) {
+    try {
+      const [updatedPet] = await db
+        .update(pets)
+        .set({
+          imageUrl,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(pets.id, petId), eq(pets.userId, userId)))
+        .returning();
+      
+      if (!updatedPet) {
+        throw new Error('Pet not found or user does not have permission');
+      }
+
+      return updatedPet;
+    } catch (error) {
+      throw new Error(`Failed to update pet profile image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
   async deletePet(petId: string, userId: string) {
     try {
       const existingPet = await db

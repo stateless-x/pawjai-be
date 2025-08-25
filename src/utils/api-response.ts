@@ -146,6 +146,13 @@ export function createInternalServerErrorResponse(
   return createErrorResponse(message, 'INTERNAL_SERVER_ERROR', undefined, meta);
 }
 
+export function createBadRequestResponse(
+  message: string = 'Bad request',
+  meta?: Partial<ApiResponse['meta']>
+): ErrorApiResponse {
+  return createErrorResponse(message, 'BAD_REQUEST', undefined, meta);
+}
+
 // === HTTP STATUS HELPERS ===
 export function createHttpResponse<T>(
   statusCode: number,
@@ -186,6 +193,7 @@ export const ApiResponses = {
   unauthorized: (message?: string) => createUnauthorizedResponse(message),
   forbidden: (message?: string) => createForbiddenResponse(message),
   internalError: (message?: string) => createInternalServerErrorResponse(message),
+  badRequest: (message?: string) => createBadRequestResponse(message),
   
   // Generic error
   error: (message: string, code?: string, details?: any) => createErrorResponse(message, code, details)

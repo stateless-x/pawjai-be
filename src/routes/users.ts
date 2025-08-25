@@ -1,8 +1,11 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { requireAuth } from '@/middleware/auth';
 import { AuthenticatedRequest } from '@/types';
 import { userService, petService, subscriptionService } from '@/services';
 import { ApiResponses } from '@/utils';
+import { z } from 'zod';
+import { bunnyService } from '@/utils/bunny';
+import { randomUUID } from 'crypto';
 
 export default async function userRoutes(fastify: FastifyInstance) {
   // Get dashboard data (profile, subscription, pets) in one call
@@ -53,6 +56,33 @@ export default async function userRoutes(fastify: FastifyInstance) {
     } catch (error) {
       fastify.log.error(error);
       return reply.status(500).send(ApiResponses.internalError('Failed to retrieve user profile'));
+    }
+  });
+
+  fastify.post('/profile/image', {
+    preHandler: requireAuth(),
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const authenticatedRequest = request as AuthenticatedRequest;
+    const userId = authenticatedRequest.user.id;
+
+    const data = await request.file();
+    if (!data) {
+      return reply.status(400).send(ApiResponses.badRequest('No file uploaded'));
+    }
+
+    try {
+      const buffer = await data.toBuffer();
+      const fileName = `${randomUUID()}-${data.filename}`;
+      const path = bunnyService.getUserProfileImagePath(userId);
+      
+      const imageUrl = await bunnyService.upload(buffer, path, fileName);
+      
+      await userService.updateUserProfileImage(userId, imageUrl);
+
+      return reply.send(ApiResponses.success({ imageUrl }, 'Profile image uploaded successfully'));
+    } catch (error) {
+      fastify.log.error('Error uploading profile image:', error);
+      return reply.status(500).send(ApiResponses.internalError('Failed to upload profile image'));
     }
   });
 

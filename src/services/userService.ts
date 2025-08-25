@@ -111,6 +111,27 @@ export class UserService {
     }
   }
 
+  async updateUserProfileImage(userId: string, imageUrl: string) {
+    try {
+      const [updatedProfile] = await db
+        .update(userProfiles)
+        .set({
+          profileImage: imageUrl,
+          updatedAt: new Date(),
+        })
+        .where(eq(userProfiles.id, userId))
+        .returning();
+      
+      if (!updatedProfile) {
+        throw new Error('User profile not found');
+      }
+
+      return updatedProfile;
+    } catch (error) {
+      throw new Error(`Failed to update user profile image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
   async createOrUpdateUserProfile(userId: string, profileData: z.infer<typeof createUserProfileSchema>) {
     try {
       const validatedData = createUserProfileSchema.parse(profileData);

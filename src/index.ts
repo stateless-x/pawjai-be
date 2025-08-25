@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
+import multipart from '@fastify/multipart';
 import { config } from 'dotenv';
 
 // Import configurations
@@ -37,6 +38,13 @@ await fastify.register(cors, {
 });
 
 await fastify.register(helmet);
+
+// Register multipart plugin
+fastify.register(multipart, {
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB
+  },
+});
 
 // Configure rate limiting
 await configureRateLimiting(fastify);
