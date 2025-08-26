@@ -32,15 +32,7 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
     ];
 
 await fastify.register(cors, {
-  origin: (origin, cb) => {
-    if (!origin) return cb(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      return cb(null, true);
-    }
-
-    return cb(new Error('Not allowed by CORS'), false);
-  },
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept'],
@@ -95,7 +87,8 @@ const host = '0.0.0.0';
 try {
   await fastify.listen({ port, host });
   fastify.log.info(`Server is running on http://localhost:${port}`);
+  fastify.log.info(`Allowed origins: ${allowedOrigins.join(', ')}`);
 } catch (err) {
-  fastify.log.error(err);
+  fastify.log.error('Failed to start server:', err);
   process.exit(1);
 } 
