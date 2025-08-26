@@ -35,17 +35,16 @@ await fastify.register(cors, {
   origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept'],
+  exposedHeaders: ['Content-Length', 'Content-Type'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 });
 
 await fastify.register(helmet);
 
 // Register multipart plugin
-fastify.register(multipart, {
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
-  },
-});
+fastify.register(multipart);
 
 // Configure rate limiting
 await configureRateLimiting(fastify);
