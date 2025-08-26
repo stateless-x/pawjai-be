@@ -32,7 +32,15 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
     ];
 
 await fastify.register(cors, {
-  origin: allowedOrigins,
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return cb(null, true);
+    }
+
+    return cb(new Error('Not allowed by CORS'), false);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept'],
@@ -52,6 +60,18 @@ await configureRateLimiting(fastify);
 // Health check endpoint
 fastify.get('/health', async (request, reply) => {
   return { status: 'ok', timestamp: new Date().toISOString() };
+});
+
+// CORS debug endpoint
+fastify.get('/cors-debug', async (request, reply) => {
+  return { 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    origin: request.headers.origin,
+    referer: request.headers.referer,
+    allowedOrigins: allowedOrigins,
+    userAgent: request.headers['user-agent']
+  };
 });
 
 // Register routes
