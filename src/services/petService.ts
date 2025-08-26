@@ -1,39 +1,18 @@
 import { db } from '@/db';
 import { pets, breeds, petRecords } from '@/db/schema';
-import { eq, and, desc, asc, count } from 'drizzle-orm';
+import { eq, ilike, and, sql, desc, or, asc, count } from 'drizzle-orm';
 import { z } from 'zod';
-import { speciesSchema, genderSchema, Species } from '@/constants';
-import { PaginationOptions, PaginatedResponse, validatePaginationOptions, calculatePaginationInfo, calculateOffset } from '@/utils';
 import { bunnyService } from '@/utils/bunny';
-
-// Validation schemas
-const createPetSchema = z.object({
-  breedId: z.string().uuid().optional(),
-  name: z.string().min(1),
-  species: speciesSchema,
-  dateOfBirth: z.string().optional(),
-  weightKg: z.string().optional(),
-  gender: genderSchema.optional(),
-  neutered: z.boolean().optional(),
-  notes: z.string().optional(),
-  imageUrl: z.string().url().or(z.literal('')).optional(),
-});
-
-const updatePetSchema = createPetSchema.partial().omit({ name: true });
-
-// Onboarding pet schema (for compatibility with onboarding flow)
-const onboardingPetSchema = z.object({
-  petName: z.string().min(1, "Pet name is required"),
-  petType: z.enum(["dog", "cat", "other"]),
-  petBreed: z.string().optional(),
-  breedId: z.string().uuid().optional(),
-  petGender: z.enum(["male", "female", "unknown"]),
-  neutered: z.enum(["yes", "no", "not_sure"]),
-  petBirthDay: z.string().optional(),
-  petBirthMonth: z.string().optional(),
-  petBirthYear: z.string().optional(),
-  avatarUrl: z.string().url().optional(),
-});
+import { toIsoDateOrUndefined } from '@/utils/date';
+import { 
+  speciesSchema, 
+  genderSchema,
+  createPetSchema,
+  updatePetSchema,
+  onboardingPetSchema,
+  Species
+} from '@/constants';
+import { PaginationOptions, PaginatedResponse, validatePaginationOptions, calculatePaginationInfo, calculateOffset } from '@/utils';
 
 export class PetService {
   // Normal user methods
@@ -142,10 +121,11 @@ export class PetService {
     try {
       const validatedData = onboardingPetSchema.parse(petData);
 
-      let dateOfBirth: string | undefined;
-      if (validatedData.petBirthDay && validatedData.petBirthMonth && validatedData.petBirthYear) {
-        dateOfBirth = `${validatedData.petBirthYear}-${validatedData.petBirthMonth}-${validatedData.petBirthDay}`;
-      }
+      const dateOfBirth = toIsoDateOrUndefined(
+        validatedData.petBirthYear,
+        validatedData.petBirthMonth,
+        validatedData.petBirthDay,
+      );
 
       const neutered = validatedData.neutered === 'yes' ? true : 
                       validatedData.neutered === 'no' ? false : 
@@ -163,12 +143,12 @@ export class PetService {
         notes: validatedData.petBreed ? `Breed: ${validatedData.petBreed}` : undefined,
       };
 
-      const newPet = await db
+      const [newPet] = await db
         .insert(pets)
         .values(petPayload)
         .returning();
 
-      return newPet[0];
+      return newPet;
     } catch (error) {
       throw new Error(`Failed to create pet from onboarding: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -359,8 +339,8 @@ export class PetService {
       const [{ count: total }] = await db.select({ count: count() }).from(pets);
 
       const sortColumn = sortBy === 'name' ? pets.name : 
-                        sortBy === 'species' ? pets.species : 
-                        pets.createdAt;
+                         sortBy === 'createdAt' ? pets.createdAt : 
+                         pets.createdAt;
       const sortDirection = sortOrder === 'asc' ? asc : desc;
 
       const allPets = await db
@@ -380,6 +360,26 @@ export class PetService {
       };
     } catch (error) {
       throw new Error(`Failed to get all pets: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  async searchPetsByName(name: string, species?: Species): Promise<typeof pets.$inferSelect[]> {
+    try {
+      const searchPattern = `%${name}%`;
+      
+      const conditions = [ilike(pets.name, searchPattern)];
+      if (species) {
+        conditions.push(eq(pets.species, species));
+      }
+
+      const petsData = await db
+        .select()
+        .from(pets)
+        .where(and(...conditions));
+        
+      return petsData;
+    } catch (error) {
+      throw new Error(`Failed to search pets by name: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

@@ -130,4 +130,91 @@ export const subscriptionCreateSchema = z.object({
   currentPeriodEnd: z.string().datetime().optional(),
 });
 
-export const subscriptionUpdateSchema = subscriptionCreateSchema.partial(); 
+export const subscriptionUpdateSchema = subscriptionCreateSchema.partial();
+
+export const onboardingProfileSchema = z.object({
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  phoneNumber: z.string(),
+  phoneNumberVerified: z.boolean().optional(),
+  countryCode: z.string().optional(),
+  ownerBirthDay: z.string().optional(),
+  ownerBirthMonth: z.string().optional(),
+  ownerBirthYear: z.string().optional(),
+  ownerProvince: z.string().optional(),
+  ownerGender: z.string().optional(),
+  ownerAgreeTerms: z.boolean(),
+  marketingConsent: z.boolean().optional(),
+  tosConsent: z.boolean().optional(),
+  tosVersion: z.string().optional(),
+});
+
+// General pet schema for onboarding flows (flexible)
+export const onboardingPetSchema = z.object({
+	petName: z.string().min(1, "Pet name is required"),
+	petType: z.enum(["dog", "cat", "other"]),
+	petBreed: z.string().optional(),
+	breedId: z.string().uuid().optional(),
+	petGender: z.enum(["male", "female", "unknown"]),
+	neutered: z.enum(["yes", "no", "not_sure"]),
+	petBirthDay: z.string().optional(),
+	petBirthMonth: z.string().optional(),
+	petBirthYear: z.string().optional(),
+	avatarUrl: z.string().url().optional(),
+});
+
+// Strict pet schema (e.g., when requiring a text breed name)
+export const onboardingPetSchemaStrict = onboardingPetSchema.extend({
+	petBreed: z.string().min(1, "Pet breed is required"),
+});
+
+export const completeOnboardingSchemaStrict = z.object({
+	profile: onboardingProfileSchema,
+	pet: onboardingPetSchemaStrict,
+});
+
+// === PET SCHEMAS ===
+export const createPetSchema = z.object({
+  breedId: z.string().uuid().optional(),
+  name: z.string().min(1),
+  species: speciesSchema,
+  dateOfBirth: z.string().optional(),
+  weightKg: z.string().optional(),
+  gender: genderSchema.optional(),
+  neutered: z.boolean().optional(),
+  notes: z.string().optional(),
+  imageUrl: z.string().url().or(z.literal('')).optional(),
+});
+
+export const updatePetSchema = createPetSchema.partial();
+
+
+// === USER SCHEMAS ===
+export const createUserProfileSchema = z.object({
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  phoneNumber: z.string(),
+  countryCode: z.string().optional(),
+  birthDate: z.string().optional(),
+  gender: genderSchema.optional(),
+  province: z.string().optional(),
+});
+
+export const createUserPersonalizationSchema = z.object({
+  houseType: z.string().optional(),
+  homeEnvironment: z.array(z.string()).optional(),
+  petPurpose: z.array(z.string()).optional(),
+  monthlyBudget: z.string().optional(),
+  ownerLifestyle: z.string().optional(),
+  ownerPetExperience: z.string().optional(),
+  priority: z.array(z.string()).optional(),
+  referralSource: z.string().optional(),
+});
+
+export const userAuthStateSchema = z.object({
+  isAuthenticated: z.boolean().optional(),
+  pendingEmailConfirmation: z.string().nullable().optional(),
+  emailConfirmationSent: z.boolean().optional(),
+  onboardingCompleted: z.boolean().optional(),
+  currentAuthStep: z.enum(['idle','signing-up','signing-in','email-confirmation','onboarding','completed']).optional(),
+}); 

@@ -2,38 +2,17 @@ import { db } from '@/db';
 import { userProfiles, userPersonalization, pets, userAuthStates } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { genderSchema, speciesSchema, onboardingProfileSchema, onboardingPetSchemaStrict, completeOnboardingSchemaStrict } from '@/constants';
+import { 
+  genderSchema, 
+  onboardingProfileSchema, 
+  onboardingPetSchemaStrict, 
+  completeOnboardingSchemaStrict,
+  createUserProfileSchema,
+  createUserPersonalizationSchema,
+  userAuthStateSchema
+} from '@/constants';
 import { toIsoDateOrUndefined } from '@/utils/date';
 import { subscriptionService } from '@/services/subscriptionService';
-
-// Validation schemas
-const createUserProfileSchema = z.object({
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  phoneNumber: z.string().optional(),
-  birthDate: z.string().optional(),
-  gender: genderSchema.optional(),
-  province: z.string().optional(),
-});
-
-const createUserPersonalizationSchema = z.object({
-  houseType: z.string().optional(),
-  homeEnvironment: z.array(z.string()).optional(),
-  petPurpose: z.array(z.string()).optional(),
-  monthlyBudget: z.string().optional(),
-  ownerLifestyle: z.string().optional(),
-  ownerPetExperience: z.string().optional(),
-  priority: z.array(z.string()).optional(),
-  referralSource: z.string().optional(),
-});
-
-const userAuthStateSchema = z.object({
-  isAuthenticated: z.boolean().optional(),
-  pendingEmailConfirmation: z.string().nullable().optional(),
-  emailConfirmationSent: z.boolean().optional(),
-  onboardingCompleted: z.boolean().optional(),
-  currentAuthStep: z.enum(['idle','signing-up','signing-in','email-confirmation','onboarding','completed']).optional(),
-});
 
 export class UserService {
   // Auth state persistence
@@ -246,6 +225,8 @@ export class UserService {
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
         phoneNumber: validatedData.phoneNumber,
+        phoneNumberVerified: validatedData.phoneNumberVerified || false,
+        countryCode: validatedData.countryCode || '+66',
         birthDate,
         gender: validatedData.ownerGender as 'male' | 'female' | 'other' | 'unknown',
         province: validatedData.ownerProvince,
@@ -266,9 +247,10 @@ export class UserService {
         .limit(1);
       console.log('Existing profile found:', existingProfile.length > 0);
 
+      let savedProfile;
       if (existingProfile.length > 0) {
         console.log('Updating existing profile...');
-        const updatedProfile = await db
+        [savedProfile] = await db
           .update(userProfiles)
           .set({
             ...profilePayload,
@@ -277,17 +259,9 @@ export class UserService {
           .where(eq(userProfiles.id, userId))
           .returning();
         console.log('Profile updated successfully');
-
-        try {
-          await subscriptionService.ensure(userId);
-        } catch (subscriptionError) {
-          console.error('Subscription service error:', subscriptionError);
-          // Don't fail the profile creation if subscription fails
-        }
-        return updatedProfile[0];
       } else {
         console.log('Creating new profile...');
-        const newProfile = await db
+        [savedProfile] = await db
           .insert(userProfiles)
           .values({
             id: userId,
@@ -295,15 +269,12 @@ export class UserService {
           })
           .returning();
         console.log('Profile created successfully');
-
-        try {
-          await subscriptionService.ensure(userId);
-        } catch (subscriptionError) {
-          console.error('Subscription service error:', subscriptionError);
-          // Don't fail the profile creation if subscription fails
-        }
-        return newProfile[0];
       }
+
+      await this.upsertAuthState(userId, { currentAuthStep: 'onboarding' });
+      await subscriptionService.ensure(userId);
+
+      return savedProfile;
     } catch (error) {
       console.error('Error in saveOnboardingProfile:', error);
       console.error('Error details:', {
