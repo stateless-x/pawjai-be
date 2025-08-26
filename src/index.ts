@@ -27,7 +27,8 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   : [
       'https://pawjai.co',
       'https://www.pawjai.co',
-      'http://localhost:3000', // For local development
+      'http://localhost:3000',
+      'https://pawjai-be-production.up.railway.app',
     ];
 
 await fastify.register(cors, {
