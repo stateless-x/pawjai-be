@@ -1,9 +1,11 @@
 import type { Config } from 'drizzle-kit';
-import { config } from 'dotenv';
+import { config  as loadEnv } from 'dotenv';
 
-config({ path: '.env.local' });
-config();
-
+if (process.env.NODE_ENV !== "production") {
+  loadEnv({ path: ".env.local" });
+} else {
+  loadEnv();
+}
 export default {
   schema: './src/db/schema.ts',
   out: './src/db/drizzle',
