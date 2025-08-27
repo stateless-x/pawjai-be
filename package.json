@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "bun run src/index.ts",
     "build": "bun install && bun run db:generate && bun run build:ts",
-    "build:prod": "bun install && bun run db:generate && bunx drizzle-kit up:pg && bun run build:ts && bun install --production",
+    "build:prod": "bun install && bun run db:generate && bunx drizzle-kit push:pg && bun run build:ts && bun install --production",
     "build:ts": "bun build src/index.ts --outdir dist --target node",
 
     "db:generate": "drizzle-kit generate:pg",
