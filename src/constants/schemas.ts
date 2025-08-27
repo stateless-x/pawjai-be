@@ -141,7 +141,6 @@ export const onboardingProfileSchema = z.object({
   ownerBirthDay: z.string().optional(),
   ownerBirthMonth: z.string().optional(),
   ownerBirthYear: z.string().optional(),
-  ownerProvince: z.string().optional(),
   ownerGender: z.string().optional(),
   ownerAgreeTerms: z.boolean(),
   marketingConsent: z.boolean().optional(),
@@ -194,10 +193,10 @@ export const createUserProfileSchema = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   phoneNumber: z.string(),
-  countryCode: z.string().optional(),
+  country: z.string().default('Thailand'),
+  countryCode: z.string().default('+66'),
   birthDate: z.string().optional(),
   gender: genderSchema.optional(),
-  province: z.string().optional(),
 });
 
 export const createUserPersonalizationSchema = z.object({

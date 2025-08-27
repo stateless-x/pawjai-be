@@ -17,7 +17,6 @@ const sampleUserProfiles = [
     phoneNumber: '+66812345678',
     birthDate: '1990-05-15',
     gender: 'male' as const,
-    province: 'Bangkok',
     profileImage: 'https://example.com/profiles/john-doe.jpg'
   },
   {
@@ -27,7 +26,6 @@ const sampleUserProfiles = [
     phoneNumber: '+66823456789',
     birthDate: '1992-08-22',
     gender: 'female' as const,
-    province: 'Chiang Mai',
     profileImage: 'https://example.com/profiles/jane-smith.jpg'
   },
   {
@@ -37,7 +35,6 @@ const sampleUserProfiles = [
     phoneNumber: '+66834567890',
     birthDate: '1988-12-10',
     gender: 'male' as const,
-    province: 'Phuket',
     profileImage: 'https://example.com/profiles/somchai-jai.jpg'
   },
   {
@@ -47,7 +44,6 @@ const sampleUserProfiles = [
     phoneNumber: '+66845678901',
     birthDate: '1995-03-28',
     gender: 'female' as const,
-    province: 'Bangkok',
     profileImage: 'https://example.com/profiles/somsri-dee.jpg'
   },
   {
@@ -57,7 +53,6 @@ const sampleUserProfiles = [
     phoneNumber: '+66856789012',
     birthDate: '1991-07-14',
     gender: 'other' as const,
-    province: 'Chiang Rai',
     profileImage: 'https://example.com/profiles/alex-johnson.jpg'
   }
 ];

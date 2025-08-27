@@ -179,7 +179,6 @@ export async function setupDatabase() {
         phone_number TEXT,
         birth_date DATE,
         gender gender,
-        province TEXT,
         profile_image TEXT,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()

@@ -29,7 +29,7 @@ export const userProfiles = pgTable('user_profiles', {
   countryCode: text('country_code').default('+66'),
   birthDate: date('birth_date'),
   gender: genderEnum('gender'),
-  province: text('province'),
+  country: text('country').default('Thailand'),
   profileImage: text('profile_image'),
   marketingConsent: boolean('marketing_consent').notNull().default(false),
   marketingConsentAt: timestamp('marketing_consent_at'),
