@@ -1,6 +1,6 @@
 import { db } from '@/db';
 import { userProfiles, userPersonalization, pets, userAuthStates } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, ne, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { 
   genderSchema, 
@@ -205,10 +205,38 @@ export class UserService {
     }
   }
 
+  // Check if phone number is already in use by another user
+  async isPhoneNumberInUse(phoneNumber: string, excludeUserId?: string): Promise<boolean> {
+    try {
+      let query;
+      if (excludeUserId) {
+        query = db.select({ id: userProfiles.id })
+          .from(userProfiles)
+          .where(and(
+            eq(userProfiles.phoneNumber, phoneNumber),
+            ne(userProfiles.id, excludeUserId)
+          ));
+      } else {
+        query = db.select({ id: userProfiles.id })
+          .from(userProfiles)
+          .where(eq(userProfiles.phoneNumber, phoneNumber));
+      }
+      
+      const result = await query.limit(1);
+      return result.length > 0;
+    } catch (error) {
+      throw new Error(`Failed to check phone number availability: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
   // Onboarding methods
   async saveOnboardingProfile(userId: string, profileData: z.infer<typeof onboardingProfileSchema>) {
     try {
+      console.log('[UserService] Starting saveOnboardingProfile for userId:', userId);
+      console.log('[UserService] Profile data received:', JSON.stringify(profileData, null, 2));
+      
       const validatedData = onboardingProfileSchema.parse(profileData);
+      console.log('[UserService] Data validation passed');
 
       // Validate gender value
       if (validatedData.ownerGender && !['male', 'female', 'other', 'unknown'].includes(validatedData.ownerGender)) {
@@ -220,6 +248,7 @@ export class UserService {
         validatedData.ownerBirthMonth,
         validatedData.ownerBirthDay,
       );
+      console.log('[UserService] Birth date processed:', birthDate);
 
       const profilePayload = {
         firstName: validatedData.firstName,
@@ -237,19 +266,36 @@ export class UserService {
         tosVersion: validatedData.tosVersion || '1.0',
       };
 
-      console.log('Profile payload:', profilePayload);
+      console.log('[UserService] Profile payload prepared:', JSON.stringify(profilePayload, null, 2));
 
-      console.log('Checking for existing profile for user:', userId);
+      // Check if phone number is already used by another user
+      console.log('[UserService] Checking phone number availability...');
+      const existingPhoneUser = await db
+        .select({ id: userProfiles.id })
+        .from(userProfiles)
+        .where(eq(userProfiles.phoneNumber, validatedData.phoneNumber))
+        .limit(1);
+
+      console.log('[UserService] Phone number check result:', existingPhoneUser);
+
+      if (existingPhoneUser.length > 0 && existingPhoneUser[0].id !== userId) {
+        throw new Error(`Phone number ${validatedData.phoneNumber} is already registered by another user`);
+      }
+
+      // Check for existing profile for current user
+      console.log('[UserService] Checking for existing profile...');
       const existingProfile = await db
         .select()
         .from(userProfiles)
         .where(eq(userProfiles.id, userId))
         .limit(1);
-      console.log('Existing profile found:', existingProfile.length > 0);
+
+      console.log('[UserService] Existing profile found:', existingProfile.length > 0);
 
       let savedProfile;
       if (existingProfile.length > 0) {
-        console.log('Updating existing profile...');
+        // Update existing profile
+        console.log('[UserService] Updating existing profile...');
         [savedProfile] = await db
           .update(userProfiles)
           .set({
@@ -258,9 +304,10 @@ export class UserService {
           })
           .where(eq(userProfiles.id, userId))
           .returning();
-        console.log('Profile updated successfully');
+        console.log('[UserService] Profile updated successfully');
       } else {
-        console.log('Creating new profile...');
+        // Create new profile
+        console.log('[UserService] Creating new profile...');
         [savedProfile] = await db
           .insert(userProfiles)
           .values({
@@ -268,20 +315,56 @@ export class UserService {
             ...profilePayload,
           })
           .returning();
-        console.log('Profile created successfully');
+        console.log('[UserService] Profile created successfully');
       }
 
+      console.log('[UserService] Updating auth state...');
       await this.upsertAuthState(userId, { currentAuthStep: 'onboarding' });
-      await subscriptionService.ensure(userId);
+      
+      console.log('[UserService] Ensuring subscription...');
+      try {
+        await subscriptionService.ensure(userId);
+        console.log('[UserService] Subscription ensured successfully');
+      } catch (subscriptionError) {
+        console.warn('[UserService] Failed to ensure subscription, but continuing:', subscriptionError);
+        // Don't fail the entire operation if subscription creation fails
+      }
 
+      console.log('[UserService] saveOnboardingProfile completed successfully');
       return savedProfile;
     } catch (error) {
-      console.error('Error in saveOnboardingProfile:', error);
-      console.error('Error details:', {
+      console.error('[UserService] Error in saveOnboardingProfile:', error);
+      console.error('[UserService] Error details:', {
         message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-        name: error instanceof Error ? error.name : undefined
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        name: error instanceof Error ? error.name : 'Unknown error',
+        userId: userId,
+        profileData: profileData
       });
+      
+      // Handle specific database constraint violations
+      if (error instanceof Error) {
+        if (error.message.includes('duplicate key value violates unique constraint')) {
+          throw new Error('Phone number is already registered by another user');
+        }
+        if (error.message.includes('violates not-null constraint')) {
+          throw new Error('Required fields are missing');
+        }
+        if (error.message.includes('violates check constraint')) {
+          throw new Error('Invalid data provided');
+        }
+        if (error.message.includes('connection')) {
+          throw new Error('Database connection error');
+        }
+        if (error.message.includes('timeout')) {
+          throw new Error('Database operation timed out');
+        }
+        if (error.message.includes('foreign key')) {
+          throw new Error('Database constraint violation');
+        }
+      }
+      
+      // Re-throw the original error if it's not a constraint violation
       throw new Error(`Failed to save onboarding profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

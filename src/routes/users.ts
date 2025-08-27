@@ -133,22 +133,50 @@ export default async function userRoutes(fastify: FastifyInstance) {
     preHandler: requireAuth(),
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      console.log('[Route] /onboarding/profile - Request started');
+      
       const authenticatedRequest = request as AuthenticatedRequest;
       const userId = authenticatedRequest.user.id;
       const profileData = request.body as any;
       
-      fastify.log.info(`Onboarding profile request for user: ${userId}`);
-      fastify.log.info('Profile data received:', profileData);
+      console.log('[Route] /onboarding/profile - User ID:', userId);
+      console.log('[Route] /onboarding/profile - Request body:', JSON.stringify(profileData, null, 2));
 
+      console.log('[Route] /onboarding/profile - Calling userService.saveOnboardingProfile...');
       const profile = await userService.saveOnboardingProfile(userId, profileData);
       
-      fastify.log.info('Profile saved successfully:', profile);
+      console.log('[Route] /onboarding/profile - Profile saved successfully');
       return reply.status(201).send(ApiResponses.created(profile, 'Profile setup completed successfully'));
     } catch (error) {
-      fastify.log.error('Error in /onboarding/profile endpoint:', error);
-      if (error instanceof Error && error.message.includes('validation')) {
-        return reply.status(400).send(ApiResponses.validationError({ message: error.message }));
+      console.error('[Route] /onboarding/profile - Error occurred:', error);
+      console.error('[Route] /onboarding/profile - Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        name: error instanceof Error ? error.name : 'Unknown error'
+      });
+      
+      // Handle specific error types
+      if (error instanceof Error) {
+        if (error.message.includes('Phone number is already registered')) {
+          return reply.status(409).send(ApiResponses.badRequest('Phone number is already registered by another user'));
+        }
+        if (error.message.includes('validation')) {
+          return reply.status(400).send(ApiResponses.validationError({ message: error.message }));
+        }
+        if (error.message.includes('Required fields are missing')) {
+          return reply.status(400).send(ApiResponses.badRequest('Required fields are missing'));
+        }
+        if (error.message.includes('Invalid data provided')) {
+          return reply.status(400).send(ApiResponses.badRequest('Invalid data provided'));
+        }
+        if (error.message.includes('Database connection error')) {
+          return reply.status(503).send(ApiResponses.internalError('Database connection error'));
+        }
+        if (error.message.includes('Database operation timed out')) {
+          return reply.status(503).send(ApiResponses.internalError('Database operation timed out'));
+        }
       }
+      
       return reply.status(500).send(ApiResponses.internalError('Failed to save profile setup'));
     }
   });
