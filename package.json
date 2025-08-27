@@ -14,7 +14,7 @@
     "db:migrate": "bun --env-file=.env.local drizzle-kit migrate",
     "db:push": "bun --env-file=.env.local drizzle-kit push",
 
-    "migrate:prod": "bunx drizzle-kit migrate --verbose",
+    "migrate:prod": "bunx drizzle-kit migrate",
     "start:prod": "bun src/index.ts",
 
     "db:drop:local": "NODE_ENV=development bun --env-file=.env.local drizzle-kit drop",
