@@ -5,18 +5,20 @@
   "main": "src/index.ts",
   "scripts": {
     "dev": "bun run src/index.ts",
-    "build": "bun install && bun run db:generate && bun run build:ts",
-    "build:prod": "bun install && bun run db:generate && bunx drizzle-kit push:pg && bun run build:ts && bun install --production",
+
+    "build": "bun install && bun run build:ts",
+    "build:prod": "bun install && bun run build:ts && bun install --production",
     "build:ts": "bun build src/index.ts --outdir dist --target node",
 
-    "db:generate": "drizzle-kit generate:pg",
-    "db:migrate": "bun --env-file=.env.local drizzle-kit up:pg",
-    "db:push": "bun --env-file=.env.local drizzle-kit push:pg",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "bun --env-file=.env.local drizzle-kit migrate",
+    "db:push": "bun --env-file=.env.local drizzle-kit push",
 
-    "migrate:prod": "bunx drizzle-kit up:pg",
+    "migrate:prod": "bunx drizzle-kit migrate --verbose",
     "start:prod": "bun src/index.ts",
-    "db:drop:local": "NODE_ENV=development bun --env-file=.env.local run drizzle-kit drop",
-    "db:push:local": "NODE_ENV=development bun --env-file=.env.local run drizzle-kit push:pg",
+
+    "db:drop:local": "NODE_ENV=development bun --env-file=.env.local drizzle-kit drop",
+    "db:push:local": "NODE_ENV=development bun --env-file=.env.local drizzle-kit push",
     "db:reset": "npm run db:drop:local && npm run db:push:local",
     "db:reset:local": "npm run db:drop:local && npm run db:push:local",
     "seed": "bun --env-file=.env.local run src/seed/run.ts",
