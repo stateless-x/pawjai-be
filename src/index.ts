@@ -47,7 +47,12 @@ await fastify.register(helmet);
 fastify.register(multipart);
 
 // Configure rate limiting
-await configureRateLimiting(fastify);
+try {
+  await configureRateLimiting(fastify);
+} catch (error) {
+  console.error('Failed to configure rate limiting:', error);
+  // Continue without rate limiting rather than crashing the server
+}
 
 // Health check endpoint
 fastify.get('/health', async (request, reply) => {
