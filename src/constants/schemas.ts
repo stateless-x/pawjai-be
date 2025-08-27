@@ -156,9 +156,11 @@ export const onboardingPetSchema = z.object({
 	breedId: z.string().uuid().optional(),
 	petGender: z.enum(["male", "female", "unknown"]),
 	neutered: z.enum(["yes", "no", "not_sure"]),
-	petBirthDay: z.string().optional(),
-	petBirthMonth: z.string().optional(),
-	petBirthYear: z.string().optional(),
+	// Accept either birthDate or separate components
+	birthDate: z.string().optional(),
+	day: z.string().optional(),
+	month: z.string().optional(),
+	year: z.string().optional(),
 	avatarUrl: z.string().url().optional(),
 });
 
@@ -177,12 +179,24 @@ export const createPetSchema = z.object({
   breedId: z.string().uuid().optional(),
   name: z.string().min(1),
   species: speciesSchema,
-  dateOfBirth: z.string().optional(),
+  // Accept either birthDate (YYYY-MM-DD) or separate day/month/year
+  birthDate: z.string().optional(),
+  day: z.string().optional(),
+  month: z.string().optional(),
+  year: z.string().optional(),
   weightKg: z.string().optional(),
   gender: genderSchema.optional(),
   neutered: z.boolean().optional(),
   notes: z.string().optional(),
   imageUrl: z.string().url().or(z.literal('')).optional(),
+}).refine((data) => {
+  // Either birthDate OR (day AND month AND year) should be provided
+  if (data.birthDate) return true;
+  if (data.day && data.month && data.year) return true;
+  return true; // Both can be optional
+}, {
+  message: "Either birthDate or day/month/year must be provided",
+  path: ["birthDate"]
 });
 
 export const updatePetSchema = createPetSchema.partial();
