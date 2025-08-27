@@ -1,0 +1,1322 @@
+{
+  "id": "0fe95195-9ac9-4ba0-aa16-61adaec5f2eb",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "5",
+  "dialect": "pg",
+  "tables": {
+    "activity_types": {
+      "name": "activity_types",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "species": {
+          "name": "species",
+          "type": "species",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_th": {
+          "name": "name_th",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description_en": {
+          "name": "description_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description_th": {
+          "name": "description_th",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "icon_url": {
+          "name": "icon_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "breeds": {
+      "name": "breeds",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "species": {
+          "name": "species",
+          "type": "species",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_th": {
+          "name": "name_th",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description_en": {
+          "name": "description_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description_th": {
+          "name": "description_th",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lifespan_min_years": {
+          "name": "lifespan_min_years",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lifespan_max_years": {
+          "name": "lifespan_max_years",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "origin_country": {
+          "name": "origin_country",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "cat_breed_details": {
+      "name": "cat_breed_details",
+      "schema": "",
+      "columns": {
+        "breed_id": {
+          "name": "breed_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "grooming_needs": {
+          "name": "grooming_needs",
+          "type": "grooming_needs",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "temperament_en": {
+          "name": "temperament_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "temperament_th": {
+          "name": "temperament_th",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "feeding_notes_en": {
+          "name": "feeding_notes_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "feeding_notes_th": {
+          "name": "feeding_notes_th",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "cat_breed_details_breed_id_breeds_id_fk": {
+          "name": "cat_breed_details_breed_id_breeds_id_fk",
+          "tableFrom": "cat_breed_details",
+          "tableTo": "breeds",
+          "columnsFrom": [
+            "breed_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "dog_breed_details": {
+      "name": "dog_breed_details",
+      "schema": "",
+      "columns": {
+        "breed_id": {
+          "name": "breed_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "size": {
+          "name": "size",
+          "type": "size",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "weight_min_kg": {
+          "name": "weight_min_kg",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "weight_max_kg": {
+          "name": "weight_max_kg",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "activity_level": {
+          "name": "activity_level",
+          "type": "activity_level",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "grooming_needs": {
+          "name": "grooming_needs",
+          "type": "grooming_needs",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "training_difficulty": {
+          "name": "training_difficulty",
+          "type": "training_difficulty",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "temperament_en": {
+          "name": "temperament_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "temperament_th": {
+          "name": "temperament_th",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "feeding_notes_en": {
+          "name": "feeding_notes_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "feeding_notes_th": {
+          "name": "feeding_notes_th",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "exercise_needs_en": {
+          "name": "exercise_needs_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "exercise_needs_th": {
+          "name": "exercise_needs_th",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wellness_routine_en": {
+          "name": "wellness_routine_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wellness_routine_th": {
+          "name": "wellness_routine_th",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "dog_breed_details_breed_id_breeds_id_fk": {
+          "name": "dog_breed_details_breed_id_breeds_id_fk",
+          "tableFrom": "dog_breed_details",
+          "tableTo": "breeds",
+          "columnsFrom": [
+            "breed_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "medication_types": {
+      "name": "medication_types",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "species": {
+          "name": "species",
+          "type": "species",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_th": {
+          "name": "name_th",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description_en": {
+          "name": "description_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description_th": {
+          "name": "description_th",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "icon_url": {
+          "name": "icon_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "requires_prescription": {
+          "name": "requires_prescription",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "pet_records": {
+      "name": "pet_records",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "pet_id": {
+          "name": "pet_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "record_type": {
+          "name": "record_type",
+          "type": "record_type",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type_id": {
+          "name": "type_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vibe": {
+          "name": "vibe",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_deleted": {
+          "name": "is_deleted",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "pet_records_pet_id_record_type_created_at_idx": {
+          "name": "pet_records_pet_id_record_type_created_at_idx",
+          "columns": [
+            "pet_id",
+            "record_type",
+            "created_at"
+          ],
+          "isUnique": false
+        },
+        "pet_records_pet_id_occurred_at_idx": {
+          "name": "pet_records_pet_id_occurred_at_idx",
+          "columns": [
+            "pet_id",
+            "occurred_at"
+          ],
+          "isUnique": false
+        },
+        "pet_records_record_type_type_id_idx": {
+          "name": "pet_records_record_type_type_id_idx",
+          "columns": [
+            "record_type",
+            "type_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "pet_records_pet_id_pets_id_fk": {
+          "name": "pet_records_pet_id_pets_id_fk",
+          "tableFrom": "pet_records",
+          "tableTo": "pets",
+          "columnsFrom": [
+            "pet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "pets": {
+      "name": "pets",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "breed_id": {
+          "name": "breed_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "species": {
+          "name": "species",
+          "type": "species",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "date_of_birth": {
+          "name": "date_of_birth",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "weight_kg": {
+          "name": "weight_kg",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gender": {
+          "name": "gender",
+          "type": "gender",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "neutered": {
+          "name": "neutered",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "pets_breed_id_breeds_id_fk": {
+          "name": "pets_breed_id_breeds_id_fk",
+          "tableFrom": "pets",
+          "tableTo": "breeds",
+          "columnsFrom": [
+            "breed_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "symptom_types": {
+      "name": "symptom_types",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "species": {
+          "name": "species",
+          "type": "species",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_th": {
+          "name": "name_th",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description_en": {
+          "name": "description_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description_th": {
+          "name": "description_th",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "icon_url": {
+          "name": "icon_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "severity": {
+          "name": "severity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "user_auth_states": {
+      "name": "user_auth_states",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "is_authenticated": {
+          "name": "is_authenticated",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "pending_email_confirmation": {
+          "name": "pending_email_confirmation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email_confirmation_sent": {
+          "name": "email_confirmation_sent",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "onboarding_completed": {
+          "name": "onboarding_completed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "current_auth_step": {
+          "name": "current_auth_step",
+          "type": "auth_step",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "user_personalization": {
+      "name": "user_personalization",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "house_type": {
+          "name": "house_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "home_environment": {
+          "name": "home_environment",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pet_purpose": {
+          "name": "pet_purpose",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "monthly_budget": {
+          "name": "monthly_budget",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "owner_lifestyle": {
+          "name": "owner_lifestyle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "owner_pet_experience": {
+          "name": "owner_pet_experience",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "priority": {
+          "name": "priority",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "referral_source": {
+          "name": "referral_source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "user_profiles": {
+      "name": "user_profiles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "first_name": {
+          "name": "first_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_name": {
+          "name": "last_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "phone_number": {
+          "name": "phone_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phone_number_verified": {
+          "name": "phone_number_verified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "country_code": {
+          "name": "country_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'+66'"
+        },
+        "birth_date": {
+          "name": "birth_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gender": {
+          "name": "gender",
+          "type": "gender",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "country": {
+          "name": "country",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'Thailand'"
+        },
+        "profile_image": {
+          "name": "profile_image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "marketing_consent": {
+          "name": "marketing_consent",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "marketing_consent_at": {
+          "name": "marketing_consent_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tos_consent": {
+          "name": "tos_consent",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "tos_consent_at": {
+          "name": "tos_consent_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tos_version": {
+          "name": "tos_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "user_profiles_phone_number_unique": {
+          "name": "user_profiles_phone_number_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "phone_number"
+          ]
+        }
+      }
+    },
+    "user_subscriptions": {
+      "name": "user_subscriptions",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "plan": {
+          "name": "plan",
+          "type": "subscription_plan",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'free'"
+        },
+        "status": {
+          "name": "status",
+          "type": "subscription_status",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'active'"
+        },
+        "billing_cycle": {
+          "name": "billing_cycle",
+          "type": "billing_cycle",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'monthly'"
+        },
+        "price_cents": {
+          "name": "price_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'THB'"
+        },
+        "trial_ends_at": {
+          "name": "trial_ends_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "current_period_end": {
+          "name": "current_period_end",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_subscriptions_user_id_user_profiles_id_fk": {
+          "name": "user_subscriptions_user_id_user_profiles_id_fk",
+          "tableFrom": "user_subscriptions",
+          "tableTo": "user_profiles",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "vet_visit_types": {
+      "name": "vet_visit_types",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "species": {
+          "name": "species",
+          "type": "species",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_th": {
+          "name": "name_th",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description_en": {
+          "name": "description_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description_th": {
+          "name": "description_th",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "icon_url": {
+          "name": "icon_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_routine": {
+          "name": "is_routine",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    }
+  },
+  "enums": {
+    "activity_level": {
+      "name": "activity_level",
+      "values": {
+        "low": "low",
+        "moderate": "moderate",
+        "high": "high"
+      }
+    },
+    "auth_step": {
+      "name": "auth_step",
+      "values": {
+        "idle": "idle",
+        "signing-up": "signing-up",
+        "signing-in": "signing-in",
+        "email-confirmation": "email-confirmation",
+        "onboarding": "onboarding",
+        "completed": "completed"
+      }
+    },
+    "billing_cycle": {
+      "name": "billing_cycle",
+      "values": {
+        "monthly": "monthly",
+        "yearly": "yearly"
+      }
+    },
+    "gender": {
+      "name": "gender",
+      "values": {
+        "male": "male",
+        "female": "female",
+        "other": "other",
+        "unknown": "unknown"
+      }
+    },
+    "grooming_needs": {
+      "name": "grooming_needs",
+      "values": {
+        "low": "low",
+        "moderate": "moderate",
+        "high": "high"
+      }
+    },
+    "record_type": {
+      "name": "record_type",
+      "values": {
+        "activity": "activity",
+        "symptom": "symptom",
+        "vet_visit": "vet_visit",
+        "medication": "medication"
+      }
+    },
+    "size": {
+      "name": "size",
+      "values": {
+        "toy": "toy",
+        "small": "small",
+        "medium": "medium",
+        "large": "large",
+        "giant": "giant"
+      }
+    },
+    "species": {
+      "name": "species",
+      "values": {
+        "dog": "dog",
+        "cat": "cat",
+        "other": "other"
+      }
+    },
+    "subscription_plan": {
+      "name": "subscription_plan",
+      "values": {
+        "free": "free",
+        "premium": "premium"
+      }
+    },
+    "subscription_status": {
+      "name": "subscription_status",
+      "values": {
+        "active": "active",
+        "canceled": "canceled",
+        "past_due": "past_due",
+        "incomplete": "incomplete"
+      }
+    },
+    "training_difficulty": {
+      "name": "training_difficulty",
+      "values": {
+        "easy": "easy",
+        "moderate": "moderate",
+        "hard": "hard"
+      }
+    }
+  },
+  "schemas": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

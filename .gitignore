@@ -101,6 +101,6 @@ Thumbs.db
 *.db
 *.sqlite
 *.sqlite3
-
-# Drizzle
-drizzle/ 
+ 
+# Drizzle internal state
+.drizzle/

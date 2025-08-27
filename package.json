@@ -16,6 +16,7 @@
     "migrate:prod": "bunx drizzle-kit up:pg",
     "start:prod": "bun src/index.ts",
     "db:drop:local": "NODE_ENV=development bun --env-file=.env.local run drizzle-kit drop",
+    "db:push:local": "NODE_ENV=development bun --env-file=.env.local run drizzle-kit push:pg",
     "db:reset": "npm run db:drop:local && npm run db:push:local",
     "db:reset:local": "npm run db:drop:local && npm run db:push:local",
     "seed": "bun --env-file=.env.local run src/seed/run.ts",
