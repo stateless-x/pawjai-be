@@ -8,6 +8,20 @@
       "when": 1756297768903,
       "tag": "0000_late_thundra",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1756306743147,
+      "tag": "0001_great_moon_knight",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1756306743148,
+      "tag": "0002_fix_pets_table",
+      "breakpoints": true
     }
   ]
 }

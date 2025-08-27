@@ -1,0 +1,193 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "id": "0002_fix_pets_table",
+  "prevId": "0001_great_moon_knight",
+  "tables": {
+    "activity_types": {
+      "name": "activity_types",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "species": {
+          "name": "species",
+          "type": "species"
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "text",
+          "notNull": true
+        },
+        "name_th": {
+          "name": "name_th",
+          "type": "text",
+          "notNull": true
+        },
+        "description_en": {
+          "name": "description_en",
+          "type": "text"
+        },
+        "description_th": {
+          "name": "description_th",
+          "type": "text"
+        },
+        "icon_url": {
+          "name": "icon_url",
+          "type": "text"
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "default": true
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "default": "now()"
+        }
+      }
+    },
+    "breeds": {
+      "name": "breeds",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "species": {
+          "name": "species",
+          "type": "species",
+          "notNull": true
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "text",
+          "notNull": true
+        },
+        "name_th": {
+          "name": "name_th",
+          "type": "text",
+          "notNull": true
+        },
+        "description_en": {
+          "name": "description_en",
+          "type": "text"
+        },
+        "description_th": {
+          "name": "description_th",
+          "type": "text"
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "text[]"
+        },
+        "lifespan_min_years": {
+          "name": "lifespan_min_years",
+          "type": "integer"
+        },
+        "lifespan_max_years": {
+          "name": "lifespan_max_years",
+          "type": "integer"
+        },
+        "origin_country": {
+          "name": "origin_country",
+          "type": "text"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "default": "now()"
+        }
+      }
+    },
+    "pets": {
+      "name": "pets",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid"
+        },
+        "breed_id": {
+          "name": "breed_id",
+          "type": "uuid"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "notNull": true
+        },
+        "species": {
+          "name": "species",
+          "type": "species"
+        },
+        "birth_date": {
+          "name": "birth_date",
+          "type": "date"
+        },
+        "weight_kg": {
+          "name": "weight_kg",
+          "type": "numeric"
+        },
+        "gender": {
+          "name": "gender",
+          "type": "gender"
+        },
+        "neutered": {
+          "name": "neutered",
+          "type": "boolean"
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text"
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "text"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "default": "now()"
+        }
+      }
+    }
+  }
+} 
