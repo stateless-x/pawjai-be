@@ -133,27 +133,32 @@ export default async function userRoutes(fastify: FastifyInstance) {
     preHandler: requireAuth(),
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      console.log('[Route] /onboarding/profile - Request started');
+      console.log('=== ONBOARDING PROFILE REQUEST START ===');
       
       const authenticatedRequest = request as AuthenticatedRequest;
       const userId = authenticatedRequest.user.id;
       const profileData = request.body as any;
       
-      console.log('[Route] /onboarding/profile - User ID:', userId);
-      console.log('[Route] /onboarding/profile - Request body:', JSON.stringify(profileData, null, 2));
+      console.log('User ID:', userId);
+      console.log('Request body:', JSON.stringify(profileData, null, 2));
 
-      console.log('[Route] /onboarding/profile - Calling userService.saveOnboardingProfile...');
+      console.log('Calling userService.saveOnboardingProfile...');
       const profile = await userService.saveOnboardingProfile(userId, profileData);
       
-      console.log('[Route] /onboarding/profile - Profile saved successfully');
+      console.log('Profile saved successfully');
+      console.log('=== ONBOARDING PROFILE REQUEST END ===');
       return reply.status(201).send(ApiResponses.created(profile, 'Profile setup completed successfully'));
     } catch (error) {
-      console.error('[Route] /onboarding/profile - Error occurred:', error);
-      console.error('[Route] /onboarding/profile - Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : 'No stack trace',
-        name: error instanceof Error ? error.name : 'Unknown error'
-      });
+      console.error('=== ONBOARDING PROFILE ERROR ===');
+      console.error('Error type:', typeof error);
+      console.error('Error constructor:', error?.constructor?.name);
+      console.error('Error message:', error instanceof Error ? error.message : String(error));
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+      console.error('=== END ERROR ===');
+      
+      // For debugging, return the actual error message
+      const errorMessage = error instanceof Error ? error.message : String(error);
       
       // Handle specific error types
       if (error instanceof Error) {
@@ -177,7 +182,16 @@ export default async function userRoutes(fastify: FastifyInstance) {
         }
       }
       
-      return reply.status(500).send(ApiResponses.internalError('Failed to save profile setup'));
+      // Return the actual error message for debugging
+      return reply.status(500).send({
+        success: false,
+        error: 'Failed to save profile setup',
+        code: 'INTERNAL_SERVER_ERROR',
+        debug: errorMessage, // This will show the actual error
+        meta: {
+          timestamp: new Date().toISOString()
+        }
+      });
     }
   });
 

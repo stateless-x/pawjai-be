@@ -59,6 +59,43 @@ fastify.get('/health', async (request, reply) => {
   return { status: 'ok', timestamp: new Date().toISOString() };
 });
 
+// Database test endpoint
+fastify.get('/db-test', async (request, reply) => {
+  try {
+    console.log('=== DATABASE TEST START ===');
+    const { db } = await import('@/db');
+    const { userProfiles } = await import('@/db/schema');
+    
+    console.log('Database imported successfully');
+    
+    // Simple query to test database connection
+    const result = await db.select().from(userProfiles).limit(1);
+    
+    console.log('Database query successful, result count:', result.length);
+    console.log('=== DATABASE TEST END ===');
+    
+    return { 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      message: 'Database connection is working',
+      hasUsers: result.length > 0
+    };
+  } catch (error) {
+    console.error('=== DATABASE TEST ERROR ===');
+    console.error('Error type:', typeof error);
+    console.error('Error message:', error instanceof Error ? error.message : String(error));
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('=== END DATABASE TEST ERROR ===');
+    
+    return reply.status(500).send({ 
+      status: 'error', 
+      timestamp: new Date().toISOString(),
+      message: 'Database connection failed',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // CORS debug endpoint
 fastify.get('/cors-debug', async (request, reply) => {
   return { 
