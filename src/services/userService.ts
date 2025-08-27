@@ -342,11 +342,29 @@ export class UserService {
     try {
       const validatedData = onboardingPetSchemaStrict.parse(petData);
 
-      const dateOfBirth = toIsoDateOrUndefined(
-        validatedData.petBirthYear,
-        validatedData.petBirthMonth,
-        validatedData.petBirthDay,
-      );
+      // Convert separate day/month/year to birthDate if provided
+      let birthDate: string | undefined;
+      if (validatedData.day && validatedData.month && validatedData.year) {
+        const year = parseInt(validatedData.year);
+        const month = parseInt(validatedData.month);
+        const day = parseInt(validatedData.day);
+        
+        // Validate date components
+        if (year < 1900 || year > new Date().getFullYear() + 1) {
+          throw new Error('Invalid year');
+        }
+        if (month < 1 || month > 12) {
+          throw new Error('Invalid month');
+        }
+        if (day < 1 || day > 31) {
+          throw new Error('Invalid day');
+        }
+        
+        // Create date string in YYYY-MM-DD format
+        birthDate = `${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      } else if (validatedData.birthDate) {
+        birthDate = validatedData.birthDate;
+      }
 
       const neutered = validatedData.neutered === 'yes' ? true : 
                       validatedData.neutered === 'no' ? false : 
@@ -356,7 +374,7 @@ export class UserService {
         userId,
         name: validatedData.petName,
         species: validatedData.petType as any,
-        dateOfBirth,
+        birthDate: birthDate || null, // Use birthDate, not dateOfBirth
         gender: validatedData.petGender as any,
         neutered,
         imageUrl: validatedData.avatarUrl,
