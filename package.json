@@ -6,16 +6,21 @@
   "scripts": {
     "build:ts": "bun build src/index.ts --outdir dist --target node",
     "db:generate": "drizzle-kit generate:pg --out ./db/drizzle",
-    "build": "bun install && bun run build:ts",
-    "build:prod": "bun install && bun run build:ts && bun install --production",
-    "start:server": "bun dist/index.js",
-    "start:prod": "bun dist/index.js",
-    "deploy": "bun run build:prod && bun run start:prod",
-    "deploy:migrate": "bun run build:prod && bun run db:migrate:prod && bun run start:server",
+    "db:migrate": "bun src/scripts/migrate.ts",
     "db:migrate:prod": "bun run src/scripts/migrate.ts",
     "db:push:prod": "bun run src/scripts/setup-db.ts",
     "db:verify": "bun run src/scripts/verify-deployment.ts",
     "db:setup:auto": "bun run db:push:prod || echo 'Database setup failed, but continuing...'",
+    
+    "build": "bun install && bun run build:ts",
+    "build:prod": "bun install && bun run build:ts && bun install --production",
+    
+    "start:server": "bun dist/index.js",
+    "start:prod": "bun dist/index.js",
+    
+    "deploy": "bun run build:prod && bun run start:prod",
+    "deploy:migrate": "bun run build:prod && bun run db:migrate:prod && bun run start:server",
+    
     "seed": "bun --env-file=.env.local run src/seed/run.ts",
     "update-breeds": "bun run src/scripts/update-breeds.ts"
   },
