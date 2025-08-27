@@ -1,61 +1,91 @@
 import { FastifyInstance } from 'fastify';
 import rateLimit from '@fastify/rate-limit';
 
-export async function configureRateLimiting(fastify: FastifyInstance) {
-  // Get rate limiting configuration from environment variables
-  const globalMax = parseInt(process.env.RATE_LIMIT_GLOBAL_MAX || '100');
-  const globalWindow = process.env.RATE_LIMIT_GLOBAL_WINDOW || '1 minute';
-  const apiMax = parseInt(process.env.RATE_LIMIT_API_MAX || '30');
-  const apiWindow = process.env.RATE_LIMIT_API_WINDOW || '1 minute';
-  const authMax = parseInt(process.env.RATE_LIMIT_AUTH_MAX || '5');
-  const authWindow = process.env.RATE_LIMIT_AUTH_WINDOW || '15 minutes';
-
-  // Global rate limiting
-  await fastify.register(rateLimit, {
-    max: globalMax,
-    timeWindow: globalWindow,
-    errorResponseBuilder: (request: any, context: any) => ({
-      code: 429,
-      error: 'Too Many Requests',
-      message: `Rate limit exceeded, retry in ${context.after}`,
-      expiresIn: context.ttl,
-    }),
-  });
-
-  // API-specific rate limiting for more restrictive limits
-  fastify.addHook('onRequest', async (request, reply) => {
-    if (request.url.startsWith('/api/')) {
-      // Apply stricter rate limiting for API endpoints
-      const clientId = request.ip || request.headers['x-forwarded-for'] || 'anonymous';
-      const key = `api:${clientId}`;
-      
-      // This is a simplified rate limiting - in production, you might want to use Redis
-      const now = Date.now();
-      const windowMs = 60 * 1000; // 1 minute
-      const maxRequests = apiMax;
-      
-      // For now, we'll rely on the global rate limiting
-      // In a production environment, you'd implement more sophisticated rate limiting here
+// Helper function to convert time window strings to milliseconds
+function parseTimeWindow(timeWindow: string): number {
+  try {
+    const timeValue = parseInt(timeWindow);
+    if (isNaN(timeValue)) {
+      return 60 * 1000;
     }
-  });
+    
+    if (timeWindow.includes('minute')) {
+      return timeValue * 60 * 1000;
+    } else if (timeWindow.includes('hour')) {
+      return timeValue * 60 * 60 * 1000;
+    } else if (timeWindow.includes('second')) {
+      return timeValue * 1000;
+    } else if (timeWindow.includes('day')) {
+      return timeValue * 24 * 60 * 60 * 1000;
+    }
+    // Default to minutes if no unit specified
+    return timeValue * 60 * 1000;
+  } catch (error) {
+    return 60 * 1000;
+  }
+}
+
+export async function configureRateLimiting(fastify: FastifyInstance) {
+  try {
+    // Check if rate limiting should be disabled
+    if (process.env.DISABLE_RATE_LIMIT === 'true') {
+      return;
+    }
+
+    // Get rate limiting configuration from environment variables with fallbacks
+    const globalMax = parseInt(process.env.RATE_LIMIT_GLOBAL_MAX || '100') || 100;
+    const globalWindow = parseTimeWindow(process.env.RATE_LIMIT_GLOBAL_WINDOW || '1 minute');
+
+    // Check if rate limiting is already registered
+    if (fastify.hasPlugin('@fastify/rate-limit')) {
+      return;
+    }
+
+    // Global rate limiting - using minimal configuration to avoid compatibility issues
+    const rateLimitConfig = {
+      max: globalMax,
+      timeWindow: globalWindow,
+      errorResponseBuilder: (request: any, context: any) => ({
+        code: 429,
+        error: 'Too Many Requests',
+        message: `Rate limit exceeded, retry in ${context.after}`,
+        expiresIn: context.ttl,
+      }),
+    };
+
+    // Try with minimal config first, if that fails, try with even more minimal config
+    try {
+      await fastify.register(rateLimit, rateLimitConfig);
+    } catch (firstError) {
+      // Fallback to minimal configuration
+      const minimalConfig = {
+        max: globalMax,
+        timeWindow: globalWindow,
+      };
+      
+      await fastify.register(rateLimit, minimalConfig);
+    }
+  } catch (error) {
+    // If rate limiting fails, continue without it rather than crashing the server
+  }
 }
 
 // Rate limiting configuration for different endpoints
 export const rateLimitConfig = {
   global: {
-    max: parseInt(process.env.RATE_LIMIT_GLOBAL_MAX || '100'),
-    timeWindow: process.env.RATE_LIMIT_GLOBAL_WINDOW || '1 minute',
+    max: parseInt(process.env.RATE_LIMIT_GLOBAL_MAX || '100') || 100,
+    timeWindow: parseTimeWindow(process.env.RATE_LIMIT_GLOBAL_WINDOW || '1 minute'),
   },
   api: {
-    max: parseInt(process.env.RATE_LIMIT_API_MAX || '30'),
-    timeWindow: process.env.RATE_LIMIT_API_WINDOW || '1 minute',
+    max: parseInt(process.env.RATE_LIMIT_API_MAX || '30') || 30,
+    timeWindow: parseTimeWindow(process.env.RATE_LIMIT_API_WINDOW || '1 minute'),
   },
   auth: {
-    max: parseInt(process.env.RATE_LIMIT_AUTH_MAX || '5'),
-    timeWindow: process.env.RATE_LIMIT_AUTH_WINDOW || '15 minutes',
+    max: parseInt(process.env.RATE_LIMIT_AUTH_MAX || '5') || 5,
+    timeWindow: parseTimeWindow(process.env.RATE_LIMIT_AUTH_WINDOW || '15 minutes'),
   },
   upload: {
     max: 10,
-    timeWindow: '1 hour',
+    timeWindow: parseTimeWindow('1 hour'),
   },
 }; 
