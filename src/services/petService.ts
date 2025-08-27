@@ -102,12 +102,49 @@ export class PetService {
         }
       }
 
+      // Convert separate day/month/year to dateOfBirth if provided
+      let dateOfBirth: string | undefined;
+      if (validatedData.day && validatedData.month && validatedData.year) {
+        // Ensure proper date formatting (YYYY-MM-DD)
+        const year = parseInt(validatedData.year);
+        const month = parseInt(validatedData.month);
+        const day = parseInt(validatedData.day);
+        
+        // Validate date components
+        if (year < 1900 || year > new Date().getFullYear() + 1) {
+          throw new Error('Invalid year');
+        }
+        if (month < 1 || month > 12) {
+          throw new Error('Invalid month');
+        }
+        if (day < 1 || day > 31) {
+          throw new Error('Invalid day');
+        }
+        
+        // Create date string in YYYY-MM-DD format
+        dateOfBirth = `${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      } else if (validatedData.birthDate) {
+        // If birthDate is already provided, use it
+        dateOfBirth = validatedData.birthDate;
+      }
+
+      // Prepare the data for database insertion, mapping fields correctly
+      const petInsertData = {
+        userId,
+        breedId: validatedData.breedId || null,
+        name: validatedData.name,
+        species: validatedData.species,
+        dateOfBirth: dateOfBirth || null, // This maps to date_of_birth column
+        weightKg: validatedData.weightKg || null,
+        gender: validatedData.gender || null,
+        neutered: validatedData.neutered || null,
+        notes: validatedData.notes || null,
+        imageUrl: validatedData.imageUrl || null,
+      };
+
       const newPet = await db
         .insert(pets)
-        .values({
-          userId,
-          ...validatedData,
-        })
+        .values(petInsertData)
         .returning();
 
       return newPet[0];
@@ -172,10 +209,48 @@ export class PetService {
         throw new Error('Access denied: You can only update your own pets');
       }
 
+      // Convert separate day/month/year to dateOfBirth if provided
+      let dateOfBirth: string | undefined;
+      if (validatedData.day && validatedData.month && validatedData.year) {
+        // Ensure proper date formatting (YYYY-MM-DD)
+        const year = parseInt(validatedData.year);
+        const month = parseInt(validatedData.month);
+        const day = parseInt(validatedData.day);
+        
+        // Validate date components
+        if (year < 1900 || year > new Date().getFullYear() + 1) {
+          throw new Error('Invalid year');
+        }
+        if (month < 1 || month > 12) {
+          throw new Error('Invalid month');
+        }
+        if (day < 1 || day > 31) {
+          throw new Error('Invalid day');
+        }
+        
+        // Create date string in YYYY-MM-DD format
+        dateOfBirth = `${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      } else if (validatedData.birthDate) {
+        // If birthDate is already provided, use it
+        dateOfBirth = validatedData.birthDate;
+      }
+
+      // Prepare the update data, mapping fields correctly
+      const updateData: any = {};
+      if (validatedData.name !== undefined) updateData.name = validatedData.name;
+      if (validatedData.species !== undefined) updateData.species = validatedData.species;
+      if (validatedData.breedId !== undefined) updateData.breedId = validatedData.breedId;
+      if (dateOfBirth !== undefined) updateData.dateOfBirth = dateOfBirth; // This maps to date_of_birth column
+      if (validatedData.weightKg !== undefined) updateData.weightKg = validatedData.weightKg;
+      if (validatedData.gender !== undefined) updateData.gender = validatedData.gender;
+      if (validatedData.neutered !== undefined) updateData.neutered = validatedData.neutered;
+      if (validatedData.notes !== undefined) updateData.notes = validatedData.notes;
+      if (validatedData.imageUrl !== undefined) updateData.imageUrl = validatedData.imageUrl;
+
       const updatedPet = await db
         .update(pets)
         .set({
-          ...validatedData,
+          ...updateData,
           updatedAt: new Date(),
         })
         .where(eq(pets.id, petId))

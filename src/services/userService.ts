@@ -374,7 +374,7 @@ export class UserService {
         userId,
         name: validatedData.petName,
         species: validatedData.petType as any,
-        birthDate: birthDate || null, // Use birthDate, not dateOfBirth
+        dateOfBirth: birthDate || null, // Use dateOfBirth to match database column
         gender: validatedData.petGender as any,
         neutered,
         imageUrl: validatedData.avatarUrl,
