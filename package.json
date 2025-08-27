@@ -4,12 +4,18 @@
   "description": "Pawjai Backend API",
   "main": "src/index.ts",
   "scripts": {
+    "build:ts": "bun build src/index.ts --outdir dist --target node",
+    "db:generate": "drizzle-kit generate:pg --out ./db/drizzle",
     "build": "bun install && bun run build:ts",
     "build:prod": "bun install && bun run build:ts && bun install --production",
+    "start:server": "bun dist/index.js",
     "start:prod": "bun run db:setup:auto && bun run db:verify && bun dist/index.js",
     "deploy": "bun run build:prod && bun run start:prod",
     "deploy:migrate": "bun run build:prod && bun run db:migrate:prod && bun run start:server",
-    "db:reset": "npm run db:drop:local && npm run db:push:local",
+    "db:migrate:prod": "bun run src/scripts/migrate.ts",
+    "db:push:prod": "bun run src/scripts/setup-db.ts",
+    "db:verify": "bun run src/scripts/verify-deployment.ts",
+    "db:setup:auto": "bun run db:push:prod || echo 'Database setup failed, but continuing...'",
     "seed": "bun --env-file=.env.local run src/seed/run.ts"
   },
   "dependencies": {
