@@ -137,7 +137,7 @@ export const pets = pgTable('pets', {
   breedId: uuid('breed_id').references(() => breeds.id),
   name: text('name').notNull(),
   species: speciesEnum('species'),
-  dateOfBirth: date('date_of_birth'),
+  dateOfBirth: date('birth_date'), // Updated to match the migration
   weightKg: numeric('weight_kg'),
   gender: genderEnum('gender'),
   neutered: boolean('neutered'),
