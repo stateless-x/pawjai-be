@@ -601,13 +601,13 @@ export async function seedBreeds(options?: { clearExisting?: boolean }) {
       console.log(`✅ Inserted dog breed: ${breed.nameEn}`);
       
       // Insert dog details
-      await db
-        .insert(dogBreedDetails)
-        .values({
-          breedId: breed.id,
-          ...dogDetails,
-        });
-      console.log(`✅ Added dog details for: ${breed.nameEn}`);
+        await db
+          .insert(dogBreedDetails)
+          .values({
+            breedId: breed.id,
+            ...dogDetails,
+          });
+        console.log(`✅ Added dog details for: ${breed.nameEn}`);
     }
 
     // Seed cat breeds
@@ -624,13 +624,13 @@ export async function seedBreeds(options?: { clearExisting?: boolean }) {
       console.log(`✅ Inserted cat breed: ${breed.nameEn}`);
       
       // Insert cat details
-      await db
-        .insert(catBreedDetails)
-        .values({
-          breedId: breed.id,
-          ...catDetails,
-        });
-      console.log(`✅ Added cat details for: ${breed.nameEn}`);
+        await db
+          .insert(catBreedDetails)
+          .values({
+            breedId: breed.id,
+            ...catDetails,
+          });
+        console.log(`✅ Added cat details for: ${breed.nameEn}`);
     }
     
     console.log('✅ All breeds seeded successfully!');
