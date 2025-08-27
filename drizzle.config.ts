@@ -8,10 +8,10 @@ if (process.env.NODE_ENV !== "production") {
 
 export default {
   schema: './src/db/schema.ts',
-  out: './src/db/drizzle',
+  out: './db/drizzle',
   driver: 'pg',
   dbCredentials: {
-    connectionString: process.env.DATABASE_URL!,
+    connectionString: process.env.DATABASE_URL || '',
   },
   verbose: true,
   strict: true,
