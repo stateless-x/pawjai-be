@@ -4,8 +4,9 @@
   "description": "Pawjai Backend API",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "bun run --watch src/index.ts",
-    "build": "bun run db:generate && bun run build:ts && bun install --production",
+    "dev": "bun run src/index.ts",
+    "build": "bun install && bun run db:generate && bun run build:ts",
+    "build:prod": "bun install && bun run db:generate && bun run build:ts && bun install --production",
     "build:ts": "bun build src/index.ts --outdir dist --target node",
 
     "db:generate": "drizzle-kit generate:pg",
