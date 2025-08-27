@@ -6,7 +6,7 @@ import { seedBreeds } from '../seed/breeds';
 // Load environment variables
 config();
 
-const connectionString = process.env.DATABASE_URL;
+const connectionString = process.env.DATABASE_URL || "postgresql://postgres:ipMQSutoTobCxXdqyqRZXaqZxlXtrsLt@interchange.proxy.rlwy.net:56225/railway";
 
 if (!connectionString) {
   console.error('DATABASE_URL environment variable is required');
