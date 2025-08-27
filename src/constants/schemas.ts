@@ -189,14 +189,6 @@ export const createPetSchema = z.object({
   neutered: z.boolean().optional(),
   notes: z.string().optional(),
   imageUrl: z.string().url().or(z.literal('')).optional(),
-}).refine((data) => {
-  // Either birthDate OR (day AND month AND year) should be provided
-  if (data.birthDate) return true;
-  if (data.day && data.month && data.year) return true;
-  return true; // Both can be optional
-}, {
-  message: "Either birthDate or day/month/year must be provided",
-  path: ["birthDate"]
 });
 
 export const updatePetSchema = createPetSchema.partial();
