@@ -73,4 +73,20 @@ export const SUBSCRIPTION_STATUS_ENUM = ['active', 'canceled', 'past_due', 'inco
 export type SubscriptionStatus = typeof SUBSCRIPTION_STATUS_ENUM[number];
 
 export const BILLING_CYCLE_ENUM = ['monthly', 'yearly'] as const;
-export type BillingCycle = typeof BILLING_CYCLE_ENUM[number]; 
+export type BillingCycle = typeof BILLING_CYCLE_ENUM[number];
+
+// === LOOKUP TYPE ENUMS ===
+export const LOOKUP_TYPE_ENUM = ['activity', 'symptom', 'vet_visit', 'medication'] as const;
+export type LookupType = typeof LOOKUP_TYPE_ENUM[number];
+
+export const LOOKUP_TYPE_SORT_BY_ENUM = ['nameEn', 'nameTh', 'sortOrder', 'createdAt'] as const;
+export type LookupTypeSortBy = typeof LOOKUP_TYPE_SORT_BY_ENUM[number];
+
+export const SORT_ORDER_ENUM = ['asc', 'desc'] as const;
+export type SortOrder = typeof SORT_ORDER_ENUM[number];
+
+export const SYMPTOM_SEVERITY_ENUM = ['mild', 'moderate', 'severe', 'emergency'] as const;
+export type SymptomSeverity = typeof SYMPTOM_SEVERITY_ENUM[number];
+
+export const MEDICATION_CATEGORY_ENUM = ['preventive', 'treatment', 'supplement'] as const;
+export type MedicationCategory = typeof MEDICATION_CATEGORY_ENUM[number]; 

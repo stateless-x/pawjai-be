@@ -13,7 +13,12 @@ import {
   VIBE_RATING_ENUM,
   SUBSCRIPTION_PLAN_ENUM,
   SUBSCRIPTION_STATUS_ENUM,
-  BILLING_CYCLE_ENUM
+  BILLING_CYCLE_ENUM,
+  LOOKUP_TYPE_ENUM,
+  LOOKUP_TYPE_SORT_BY_ENUM,
+  SORT_ORDER_ENUM,
+  SYMPTOM_SEVERITY_ENUM,
+  MEDICATION_CATEGORY_ENUM
 } from './enums';
 
 export const genderSchema = z.enum(GENDER_ENUM);
@@ -116,6 +121,25 @@ export const createLookupTypeSchema = z.object({
 });
 
 export const updateLookupTypeSchema = createLookupTypeSchema.partial();
+
+// === LOOKUP TYPE QUERY PARAMETERS ===
+export const lookupTypeQueryParamsSchema = z.object({
+  species: z.string().optional(),
+  isActive: z.string().transform(val => val === 'true').optional(),
+  search: z.string().optional(),
+  sortBy: z.enum(LOOKUP_TYPE_SORT_BY_ENUM).optional(),
+  sortOrder: z.enum(SORT_ORDER_ENUM).optional(),
+  limit: z.coerce.number().int().positive().max(100).optional(),
+  offset: z.coerce.number().int().nonnegative().optional(),
+  category: z.enum(MEDICATION_CATEGORY_ENUM).optional(),
+  severity: z.enum(SYMPTOM_SEVERITY_ENUM).optional(),
+  isRoutine: z.string().transform(val => val === 'true').optional(),
+  requiresPrescription: z.string().transform(val => val === 'true').optional(),
+});
+
+// === LOOKUP TYPE PARAMETER SCHEMAS ===
+export const lookupTypeParamSchema = z.enum(LOOKUP_TYPE_ENUM);
+export const lookupTypeIdParamSchema = z.string().uuid();
 
 // === SUBSCRIPTION SCHEMAS ===
 export const subscriptionCreateSchema = z.object({

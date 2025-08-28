@@ -14,6 +14,7 @@ import petRoutes from './routes/pets';
 import breedRoutes from './routes/breeds';
 import subscriptionRoutes from './routes/subscriptions';
 import petRecordRoutes from './routes/petRecord';
+import lookupTypesRoutes from './routes/lookupTypes';
 
 config();
 
@@ -79,6 +80,7 @@ await fastify.register(petRoutes, { prefix: '/api/pets' });
 await fastify.register(breedRoutes, { prefix: '/api/breeds' });
 await fastify.register(subscriptionRoutes, { prefix: '/api/subscriptions' });
 await fastify.register(petRecordRoutes, { prefix: '/api' });
+await fastify.register(lookupTypesRoutes, { prefix: '/api/lookup-types' });
 
 // Error handler
 fastify.setErrorHandler((error, request, reply) => {
