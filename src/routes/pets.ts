@@ -63,6 +63,18 @@ export default async function petRoutes(fastify: FastifyInstance) {
       return reply.status(400).send(ApiResponses.badRequest('No file uploaded'));
     }
 
+    // Validate file type (matching BunnyService supported formats)
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/heif', 'image/heic'];
+    if (!allowedMimeTypes.includes(data.mimetype)) {
+      return reply.status(400).send(ApiResponses.badRequest('Invalid file type. Only JPEG, PNG, WebP, GIF, HEIF, and HEIC images are allowed.'));
+    }
+
+    // Validate file size (10MB limit)
+    const maxFileSize = 10 * 1024 * 1024; // 10MB in bytes
+    if (data.file.bytesRead > maxFileSize) {
+      return reply.status(413).send(ApiResponses.badRequest('File size too large. Maximum allowed size is 10MB.'));
+    }
+
     try {
       fastify.log.info(`[Pet Upload] Step 1: Verifying pet ${petId} for user ${userId}`);
       // First, verify the pet belongs to the user
@@ -83,9 +95,25 @@ export default async function petRoutes(fastify: FastifyInstance) {
       return reply.send(ApiResponses.success({ imageUrl }, 'Pet profile image uploaded successfully'));
     } catch (error) {
       fastify.log.error(error, `A failure occurred during pet image upload for petId: ${petId}`);
-      if (error instanceof Error && (error.message.includes('not found') || error.message.includes('Access denied'))) {
-        return reply.status(404).send(ApiResponses.notFound('Pet', petId));
+      
+      // Handle specific error types
+      if (error instanceof Error) {
+        // File size too large
+        if (error.message.includes('FST_REQ_FILE_TOO_LARGE') || error.message.includes('request file too large')) {
+          return reply.status(413).send(ApiResponses.badRequest('File size too large. Maximum allowed size is 10MB.'));
+        }
+        
+        // Pet not found or access denied
+        if (error.message.includes('not found') || error.message.includes('Access denied')) {
+          return reply.status(404).send(ApiResponses.notFound('Pet', petId));
+        }
+        
+        // Bunny.net upload errors
+        if (error.message.includes('Bunny.net') || error.message.includes('Failed to upload to Bunny.net')) {
+          return reply.status(500).send(ApiResponses.internalError('Failed to upload image to storage. Please try again.'));
+        }
       }
+      
       return reply.status(500).send(ApiResponses.internalError('Failed to upload pet image'));
     }
   });

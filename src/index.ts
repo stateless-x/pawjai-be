@@ -44,8 +44,14 @@ await fastify.register(cors, {
 
 await fastify.register(helmet);
 
-// Register multipart plugin
-fastify.register(multipart);
+// Register multipart plugin with file size limits
+fastify.register(multipart, {
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+    files: 1, // Allow only 1 file per request
+    fieldSize: 1024 * 1024, // 1MB for text fields
+  }
+});
 
 // Configure rate limiting
 try {

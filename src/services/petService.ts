@@ -159,9 +159,9 @@ export class PetService {
       const validatedData = onboardingPetSchema.parse(petData);
 
       const dateOfBirth = toIsoDateOrUndefined(
-        validatedData.petBirthYear,
-        validatedData.petBirthMonth,
-        validatedData.petBirthDay,
+        validatedData.day,
+        validatedData.month,
+        validatedData.year,
       );
 
       const neutered = validatedData.neutered === 'yes' ? true : 
