@@ -139,7 +139,7 @@ async function setupDatabase() {
 
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS user_auth_states (
-        user_id UUID PRIMARY KEY,
+        user_id UUID PRIMARY KEY REFERENCES user_profiles(id),
         is_authenticated BOOLEAN DEFAULT false,
         pending_email_confirmation TEXT,
         email_confirmation_sent BOOLEAN DEFAULT false,
@@ -153,7 +153,7 @@ async function setupDatabase() {
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS user_personalization (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID,
+        user_id UUID REFERENCES user_profiles(id),
         house_type TEXT,
         home_environment TEXT[],
         pet_purpose TEXT[],
@@ -169,7 +169,7 @@ async function setupDatabase() {
 
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS user_subscriptions (
-        user_id UUID PRIMARY KEY,
+        user_id UUID PRIMARY KEY REFERENCES user_profiles(id),
         plan subscription_plan DEFAULT 'free',
         status subscription_status DEFAULT 'active',
         billing_cycle billing_cycle DEFAULT 'monthly',
@@ -202,18 +202,16 @@ async function setupDatabase() {
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS pets (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID NOT NULL,
-        breed_id UUID,
+        user_id UUID REFERENCES user_profiles(id),
+        breed_id UUID REFERENCES breeds(id),
         name TEXT NOT NULL,
-        species species NOT NULL,
-        gender gender,
+        species species,
         birth_date DATE,
-        weight_kg NUMERIC(5,2),
-        size size,
-        activity_level activity_level,
-        grooming_needs grooming_needs,
-        training_difficulty training_difficulty,
-        profile_image TEXT,
+        weight_kg NUMERIC,
+        gender gender,
+        neutered BOOLEAN,
+        notes TEXT,
+        image_url TEXT,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       );
@@ -221,53 +219,46 @@ async function setupDatabase() {
 
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS dog_breed_details (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        breed_id UUID NOT NULL,
-        energy_level INTEGER,
-        exercise_needs INTEGER,
-        playfulness INTEGER,
-        affection_level INTEGER,
-        trainability INTEGER,
-        watchdog_ability INTEGER,
-        adaptability INTEGER,
-        good_with_children INTEGER,
-        good_with_other_dogs INTEGER,
-        good_with_strangers INTEGER,
-        grooming_requirements INTEGER,
-        shedding_level INTEGER,
-        barking_level INTEGER,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
+        breed_id UUID PRIMARY KEY REFERENCES breeds(id),
+        size size,
+        weight_min_kg NUMERIC,
+        weight_max_kg NUMERIC,
+        activity_level activity_level,
+        grooming_needs grooming_needs,
+        training_difficulty training_difficulty,
+        temperament_en TEXT,
+        temperament_th TEXT,
+        feeding_notes_en TEXT,
+        feeding_notes_th TEXT,
+        exercise_needs_en TEXT,
+        exercise_needs_th TEXT,
+        wellness_routine_en TEXT,
+        wellness_routine_th TEXT
       );
     `);
 
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS cat_breed_details (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        breed_id UUID NOT NULL,
-        energy_level INTEGER,
-        playfulness INTEGER,
-        affection_level INTEGER,
-        vocalization INTEGER,
-        intelligence INTEGER,
-        independence INTEGER,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
+        breed_id UUID PRIMARY KEY REFERENCES breeds(id),
+        grooming_needs grooming_needs,
+        temperament_en TEXT,
+        temperament_th TEXT,
+        feeding_notes_en TEXT,
+        feeding_notes_th TEXT
       );
     `);
 
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS activity_types (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        species species,
         name_en TEXT NOT NULL,
         name_th TEXT NOT NULL,
         description_en TEXT,
         description_th TEXT,
-        category TEXT,
-        duration_minutes INTEGER,
-        calories_burned_per_hour INTEGER,
-        difficulty_level INTEGER,
-        equipment_needed TEXT[],
+        icon_url TEXT,
+        is_active BOOLEAN DEFAULT true,
+        sort_order INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       );
@@ -276,15 +267,15 @@ async function setupDatabase() {
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS symptom_types (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        species species,
         name_en TEXT NOT NULL,
         name_th TEXT NOT NULL,
         description_en TEXT,
         description_th TEXT,
-        category TEXT,
-        severity_level INTEGER,
-        common_causes TEXT[],
-        recommended_actions TEXT[],
-        when_to_see_vet TEXT,
+        icon_url TEXT,
+        severity TEXT,
+        is_active BOOLEAN DEFAULT true,
+        sort_order INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       );
@@ -293,16 +284,15 @@ async function setupDatabase() {
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS vet_visit_types (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        species species,
         name_en TEXT NOT NULL,
         name_th TEXT NOT NULL,
         description_en TEXT,
         description_th TEXT,
-        category TEXT,
-        typical_duration_minutes INTEGER,
-        cost_range_min INTEGER,
-        cost_range_max INTEGER,
-        frequency_recommendation TEXT,
-        preparation_notes TEXT,
+        icon_url TEXT,
+        is_routine BOOLEAN DEFAULT false,
+        is_active BOOLEAN DEFAULT true,
+        sort_order INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       );
@@ -311,17 +301,16 @@ async function setupDatabase() {
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS medication_types (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        species species,
         name_en TEXT NOT NULL,
         name_th TEXT NOT NULL,
         description_en TEXT,
         description_th TEXT,
+        icon_url TEXT,
         category TEXT,
-        dosage_form TEXT,
-        typical_dosage TEXT,
-        frequency TEXT,
-        duration TEXT,
-        side_effects TEXT[],
-        contraindications TEXT[],
+        requires_prescription BOOLEAN DEFAULT false,
+        is_active BOOLEAN DEFAULT true,
+        sort_order INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       );
@@ -330,17 +319,16 @@ async function setupDatabase() {
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS pet_records (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        pet_id UUID NOT NULL,
+        pet_id UUID NOT NULL REFERENCES pets(id),
         record_type record_type NOT NULL,
-        type_id UUID,
-        title TEXT,
-        description TEXT,
+        type_id UUID NOT NULL,
+        note TEXT,
+        vibe INTEGER,
+        image_url TEXT[],
+        metadata JSONB,
         occurred_at TIMESTAMP NOT NULL,
-        duration_minutes INTEGER,
-        cost_cents INTEGER,
-        location TEXT,
-        notes TEXT,
-        attachments JSONB,
+        is_deleted BOOLEAN DEFAULT false,
+        deleted_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       );

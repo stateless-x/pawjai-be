@@ -115,7 +115,7 @@ export const createLookupTypeSchema = z.object({
   nameTh: z.string().min(1),
   descriptionEn: z.string().optional(),
   descriptionTh: z.string().optional(),
-  iconUrl: z.string().url().optional(),
+  iconUrl: z.string().url().optional().or(z.literal('')).or(z.null()),
   isActive: z.boolean().default(true),
   sortOrder: z.number().int().default(0),
 });
