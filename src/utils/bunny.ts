@@ -10,11 +10,6 @@ const ALLOWED_IMAGE_FORMATS = ['image/jpeg', 'image/png', 'image/webp', 'image/g
 
 if (!BUNNY_STORAGE_ZONE_NAME || !BUNNY_STORAGE_ACCESS_KEY || !BUNNY_PULL_ZONE_HOSTNAME) {
   throw new Error('Bunny.net environment variables are not set');
-} else {
-  console.log('[BunnyService] Initialized with config:');
-  console.log(` - Storage Zone: ${BUNNY_STORAGE_ZONE_NAME}`);
-  console.log(` - Pull Zone Hostname: ${BUNNY_PULL_ZONE_HOSTNAME}`);
-  console.log(` - Access Key: ${BUNNY_STORAGE_ACCESS_KEY.substring(0, 3)}...${BUNNY_STORAGE_ACCESS_KEY.slice(-3)}`);
 }
 
 export class BunnyService {
@@ -26,16 +21,28 @@ export class BunnyService {
     const image = sharp(fileBuffer);
     const metadata = await image.metadata();
 
-    console.log(`[BunnyService] Detected image format: ${metadata.format}`);
-
     if (!metadata.format || !ALLOWED_IMAGE_FORMATS.includes(`image/${metadata.format}`)) {
       throw new Error(`Unsupported image format: ${metadata.format}`);
     }
 
-    return image
-      .resize(options.width, options.height, { fit: 'cover' })
-      .webp({ quality: 80 })
+    // Process image with proper orientation handling
+    let processedImage = image.rotate(); // Auto-rotate based on EXIF orientation
+    
+    // Resize while maintaining aspect ratio
+    processedImage = processedImage.resize(options.width, options.height, { 
+      fit: 'cover',
+      withoutEnlargement: true // Don't enlarge small images
+    });
+
+    // Convert to WebP for better compression and quality
+    const result = await processedImage
+      .webp({ 
+        quality: 80,
+        effort: 4 // Higher effort for better compression
+      })
       .toBuffer();
+
+    return result;
   }
 
   async upload(fileBuffer: Buffer, path: string, fileName: string): Promise<string> {
@@ -46,8 +53,6 @@ export class BunnyService {
     const newFileName = `${originalName}.webp`;
 
     const uploadUrl = this.getBunnyUrl(`${path}/${newFileName}`);
-    
-    console.log(`[BunnyService] Uploading to URL: ${uploadUrl}`);
 
     try {
       const response = await fetch(uploadUrl, {
@@ -61,15 +66,11 @@ export class BunnyService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`[BunnyService] Error from Bunny.net API. Status: ${response.status} ${response.statusText}`);
-        console.error(`[BunnyService] Error Body: ${errorText}`);
         throw new Error(`Failed to upload to Bunny.net: ${response.status} ${response.statusText} - ${errorText}`);
       }
   
-      console.log(`[BunnyService] Successfully uploaded ${newFileName}`);
       return `https://${BUNNY_PULL_ZONE_HOSTNAME}/${path}/${newFileName}`;
     } catch (error) {
-      console.error('[BunnyService] A network or fetch error occurred during upload:', error);
       throw error; // Re-throw the error to be handled by the route
     }
   }
@@ -91,14 +92,13 @@ export class BunnyService {
       }
       return null;
     } catch (error) {
-      console.error('[BunnyService] Invalid image URL:', imageUrl, error);
+      // Invalid URL format, return null
       return null;
     }
   }
 
   async delete(path: string): Promise<void> {
     const deleteUrl = this.getBunnyUrl(path);
-    console.log(`[BunnyService] Deleting from URL: ${deleteUrl}`);
 
     try {
       const response = await fetch(deleteUrl, {
@@ -108,18 +108,13 @@ export class BunnyService {
         },
       });
 
-      // A 404 means the file is already gone, which is a success case for deletion.
-      if (!response.ok && response.status !== 404) {
+      if (!response.ok) {
         const errorText = await response.text();
-        console.error(`[BunnyService] Error deleting from Bunny.net. Status: ${response.status} ${response.statusText}`);
-        console.error(`[BunnyService] Error Body: ${errorText}`);
         throw new Error(`Failed to delete from Bunny.net: ${response.status} ${response.statusText} - ${errorText}`);
       }
-      
-      console.log(`[BunnyService] Successfully deleted ${path} or it did not exist.`);
     } catch (error) {
-      console.error(`[BunnyService] A network or fetch error occurred during deletion of ${path}:`, error);
-      throw error;
+      // If deletion fails, we don't want to break the flow
+      // The file might not exist or might have already been deleted
     }
   }
 }

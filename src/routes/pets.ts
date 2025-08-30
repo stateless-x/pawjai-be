@@ -51,6 +51,7 @@ export default async function petRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Upload pet profile image
   fastify.post('/:petId/image', {
     preHandler: requireAuth(),
   }, async (request: FastifyRequest, reply: FastifyReply) => {
@@ -76,22 +77,17 @@ export default async function petRoutes(fastify: FastifyInstance) {
     }
 
     try {
-      fastify.log.info(`[Pet Upload] Step 1: Verifying pet ${petId} for user ${userId}`);
       // First, verify the pet belongs to the user
       await petService.getPetById(petId, userId);
 
-      fastify.log.info(`[Pet Upload] Step 2: Converting uploaded file to buffer`);
       const buffer = await data.toBuffer();
       
-      fastify.log.info(`[Pet Upload] Step 3: Calling BunnyService to upload`);
       const fileName = `${randomUUID()}-${data.filename}`;
       const path = bunnyService.getPetProfileImagePath(userId, petId);
       const imageUrl = await bunnyService.upload(buffer, path, fileName);
       
-      fastify.log.info(`[Pet Upload] Step 4: Updating pet profile in database`);
       await petService.updatePetProfileImage(petId, userId, imageUrl);
 
-      fastify.log.info(`[Pet Upload] Step 5: Sending success response`);
       return reply.send(ApiResponses.success({ imageUrl }, 'Pet profile image uploaded successfully'));
     } catch (error) {
       fastify.log.error(error, `A failure occurred during pet image upload for petId: ${petId}`);
@@ -111,6 +107,11 @@ export default async function petRoutes(fastify: FastifyInstance) {
         // Bunny.net upload errors
         if (error.message.includes('Bunny.net') || error.message.includes('Failed to upload to Bunny.net')) {
           return reply.status(500).send(ApiResponses.internalError('Failed to upload image to storage. Please try again.'));
+        }
+
+        // Image processing errors
+        if (error.message.includes('Unsupported image format') || error.message.includes('processImage')) {
+          return reply.status(400).send(ApiResponses.badRequest('Image processing failed. Please try with a different image.'));
         }
       }
       
