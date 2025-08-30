@@ -320,7 +320,7 @@ export class PetService {
         .delete(pets)
         .where(eq(pets.id, petId));
 
-      return { message: 'Pet deleted successfully' };
+      return { success: true, message: 'Pet deleted successfully' };
     } catch (error) {
       throw new Error(`Failed to delete pet: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }

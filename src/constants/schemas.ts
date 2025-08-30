@@ -97,7 +97,9 @@ export const createPetRecordSchema = z.object({
 export const updatePetRecordSchema = z.object({
   note: z.string().optional(),
   vibe: vibeRatingSchema.optional(),
+  imageUrl: z.array(z.string().url()).optional(),
   metadata: z.record(z.any()).optional(),
+  occurredAt: z.string().datetime().optional(),
 });
 
 export const petRecordQuerySchema = z.object({
