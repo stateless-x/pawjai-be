@@ -27,7 +27,6 @@ export class PetService {
             name: pets.name,
             species: pets.species,
             dateOfBirth: pets.dateOfBirth,
-            weightKg: pets.weightKg,
             gender: pets.gender,
             neutered: pets.neutered,
             notes: pets.notes,
@@ -58,7 +57,6 @@ export class PetService {
             name: pets.name,
             species: pets.species,
             dateOfBirth: pets.dateOfBirth,
-            weightKg: pets.weightKg,
             gender: pets.gender,
             neutered: pets.neutered,
             notes: pets.notes,
@@ -135,7 +133,6 @@ export class PetService {
         name: validatedData.name,
         species: validatedData.species,
         dateOfBirth: dateOfBirth || null, // This maps to date_of_birth column
-        weightKg: validatedData.weightKg || null,
         gender: validatedData.gender || null,
         neutered: validatedData.neutered || null,
         notes: validatedData.notes || null,
@@ -241,7 +238,6 @@ export class PetService {
       if (validatedData.species !== undefined) updateData.species = validatedData.species;
       if (validatedData.breedId !== undefined) updateData.breedId = validatedData.breedId;
       if (dateOfBirth !== undefined) updateData.dateOfBirth = dateOfBirth; // This maps to date_of_birth column
-      if (validatedData.weightKg !== undefined) updateData.weightKg = validatedData.weightKg;
       if (validatedData.gender !== undefined) updateData.gender = validatedData.gender;
       if (validatedData.neutered !== undefined) updateData.neutered = validatedData.neutered;
       if (validatedData.notes !== undefined) updateData.notes = validatedData.notes;

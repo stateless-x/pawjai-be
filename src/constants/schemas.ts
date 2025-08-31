@@ -210,7 +210,6 @@ export const createPetSchema = z.object({
   day: z.string().optional(),
   month: z.string().optional(),
   year: z.string().optional(),
-  weightKg: z.string().optional(),
   gender: genderSchema.optional(),
   neutered: z.boolean().optional(),
   notes: z.string().optional(),

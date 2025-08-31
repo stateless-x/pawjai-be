@@ -162,7 +162,7 @@ export class PetRecordService {
    */
   async updateRecord(
     recordId: string, 
-    userId: string, 
+    userId: string,
     data: z.infer<typeof updatePetRecordSchema>
   ) {
     try {
@@ -189,6 +189,18 @@ export class PetRecordService {
         throw new Error('Record not found or access denied');
       }
       
+      // Validate occurredAt if provided
+      if (validatedData.occurredAt) {
+        const occurredAtDate = new Date(validatedData.occurredAt)
+        if (isNaN(occurredAtDate.getTime())) {
+          throw new Error('Invalid occurredAt date format')
+        }
+        // Ensure occurredAt is not in the future
+        if (occurredAtDate > new Date()) {
+          throw new Error('OccurredAt cannot be in the future')
+        }
+      }
+
       // Update the record
       const [updatedRecord] = await db
         .update(petRecords)

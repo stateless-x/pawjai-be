@@ -1,0 +1,84 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "tables": {
+    "pets": {
+      "name": "pets",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "hasDefault": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "breed_id": {
+          "name": "breed_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "species": {
+          "name": "species",
+          "type": "species",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "birth_date": {
+          "name": "birth_date",
+          "type": "date",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "gender": {
+          "name": "gender",
+          "type": "gender",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "neutered": {
+          "name": "neutered",
+          "type": "boolean",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "hasDefault": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "hasDefault": true
+        }
+      }
+    }
+  }
+} 

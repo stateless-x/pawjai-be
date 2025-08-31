@@ -1,1 +1,2 @@
-ALTER TABLE "pets" RENAME COLUMN "date_of_birth" TO "birth_date";
+-- This migration is no longer needed as the database already has birth_date
+-- The column was already correctly named in the initial schema
