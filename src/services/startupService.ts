@@ -41,6 +41,15 @@ class StartupService {
             : `Application initialized with migration warnings: ${migrationResult.message}`,
           timestamp: new Date().toISOString()
         };
+        
+        // Log migration result with appropriate colors
+        if (migrationResult.success) {
+          console.log('\x1b[32m✅ Migrations completed successfully\x1b[0m');
+        } else if (migrationResult.details?.shouldContinue !== false) {
+          console.log('\x1b[33m⚠️  Migrations completed with warnings (continuing)\x1b[0m');
+        } else {
+          console.log('\x1b[31m❌ Migrations failed critically\x1b[0m');
+        }
       } else {
         console.log('🛠️  Development mode detected, skipping startup migrations');
         

@@ -167,12 +167,15 @@ The application uses the following main tables:
 
 #### Database Management
 - `bun run db:generate` - Generate Drizzle migrations
-- `bun run db:migrate` - Run database migrations
+- `bun run db:migrate` - Run database migrations locally
+- `bun run db:migrate:prod` - Run database migrations in production
 - `bun run db:push` - Push schema changes to database (with local env)
 - `bun run db:push:local` - Push schema changes to database (with local env)
 - `bun run db:studio` - Open Drizzle Studio (with local env)
 - `bun run db:seed` - Seed database with sample data (with local env)
 - `bun run db:seed:local` - Seed database with sample data (with local env)
+- `bun run db:status` - Check migration status
+- `bun run db:verify` - Verify deployment health
 
 
 
@@ -323,6 +326,49 @@ Rate limiting configuration can be adjusted via environment variables:
 
 ## Deployment
 
+### Railway Deployment (Recommended)
+
+The application is configured for automatic deployment on Railway with automatic database migrations.
+
+#### Railway Configuration (`railway.toml`)
+
+```toml
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "bun dist/index.js"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+healthcheckInterval = 30
+
+[deploy.preDeploy]
+command = "bun run db:migrate:prod"
+```
+
+#### Automatic Deployment Process
+
+1. **Pre-deployment**: Railway automatically runs `bun run db:migrate:prod` to update database schema
+2. **Build**: Railway builds your application using Nixpacks
+3. **Start**: Railway starts your server with `bun dist/index.js`
+4. **Health Check**: Railway monitors `/health` endpoint every 30 seconds
+5. **Auto-restart**: Server automatically restarts on failures
+
+#### Railway Environment Variables
+
+Set these in your Railway project:
+```env
+DATABASE_URL="postgresql://username:password@host:port/database"
+NODE_ENV="production"
+SUPABASE_URL="https://your-project.supabase.co"
+SUPABASE_ANON_KEY="your-anon-key"
+SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+ALLOWED_ORIGINS="https://pawjai.co,https://www.pawjai.co"
+```
+
+### Manual Deployment
+
 1. Set up a PostgreSQL database
 2. Configure environment variables
 3. Run database migrations
@@ -330,8 +376,51 @@ Rate limiting configuration can be adjusted via environment variables:
 
 ```bash
 bun run build
+bun run db:migrate:prod
 bun run start
 ```
+
+### Migration System
+
+The application includes a comprehensive migration system that ensures your database schema is always up-to-date:
+
+#### Automatic Migrations
+
+- **Pre-deployment**: Railway runs migrations before deploying new code
+- **Startup**: Server automatically runs any pending migrations on startup
+- **Health monitoring**: Real-time migration status via `/health` and `/api/migrations/status` endpoints
+- **Error handling**: Graceful fallbacks and retry mechanisms
+
+#### Migration Commands
+
+```bash
+# Generate new migrations
+bun run db:generate
+
+# Run migrations locally
+bun run db:migrate
+
+# Run migrations in production
+bun run db:migrate:prod
+
+# Check migration status
+bun run db:status
+
+# Verify deployment
+bun run db:verify
+```
+
+#### Migration Health Endpoints
+
+- `GET /health` - Enhanced health check with migration status
+- `GET /api/migrations/status` - Detailed migration information
+
+#### Production Safety Features
+
+- **Non-destructive operations**: Existing data is always preserved
+- **Automatic retries**: Failed migrations retry up to 3 times
+- **Graceful degradation**: Server continues running even with migration issues
+- **Health monitoring**: Continuous status checking and alerts
 
 ## Contributing
 

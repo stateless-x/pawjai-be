@@ -161,9 +161,39 @@ class MigrationService {
       
       // Run migrations
       console.log('🔄 Running migrations...');
-      await migrate(db, { migrationsFolder: './db/drizzle' as string });
+      
+      // Capture and filter out NOTICE messages (these are normal, not errors)
+      const originalConsoleLog = console.log;
+      const notices: string[] = [];
+      
+      // Temporarily override console.log to capture notices
+      console.log = (...args: any[]) => {
+        const message = args.join(' ');
+        if (message.includes('NOTICE') && (message.includes('already exists') || message.includes('skipping'))) {
+          notices.push(message);
+          // Use a less alarming color for notices
+          originalConsoleLog('\x1b[33m📝 Notice:\x1b[0m', ...args);
+        } else {
+          originalConsoleLog(...args);
+        }
+      };
+      
+      try {
+        await migrate(db, { migrationsFolder: './db/drizzle' as string });
+      } finally {
+        // Restore original console.log
+        console.log = originalConsoleLog;
+      }
       
       const duration = Date.now() - startTime;
+      
+      if (notices.length > 0) {
+        console.log(`\x1b[33m📋 Migration notices (normal behavior):\x1b[0m`);
+        notices.forEach(notice => {
+          console.log(`  \x1b[33m• ${notice}\x1b[0m`);
+        });
+      }
+      
       console.log(`✅ Database migration completed successfully in ${duration}ms!`);
       
       // Close the connection
