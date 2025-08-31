@@ -120,11 +120,34 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const userId = authenticatedRequest.user.id;
       const profileData = request.body as any;
 
-      const profile = await userService.createOrUpdateUserProfile(userId, profileData);
-      return reply.status(201).send(ApiResponses.created(profile, 'User profile created/updated successfully'));
+      const profile = await userService.upsertUserProfile(userId, profileData);
+      
+      // Check if this is an update (profile already existed) or creation
+      const isUpdate = profile.updatedAt !== profile.createdAt;
+      const statusCode = isUpdate ? 200 : 201;
+      const message = isUpdate ? 'User profile updated successfully' : 'User profile created successfully';
+      
+      return reply.status(statusCode).send(ApiResponses.success(profile, message));
     } catch (error) {
       fastify.log.error(error);
       return reply.status(500).send(ApiResponses.internalError('Failed to create/update user profile'));
+    }
+  });
+
+  // Update user profile (PATCH method for partial updates)
+  fastify.patch('/profile', {
+    preHandler: requireAuth(),
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const authenticatedRequest = request as AuthenticatedRequest;
+      const userId = authenticatedRequest.user.id;
+      const profileData = request.body as any;
+
+      const profile = await userService.upsertUserProfile(userId, profileData);
+      return reply.status(200).send(ApiResponses.success(profile, 'User profile updated successfully'));
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send(ApiResponses.internalError('Failed to update user profile'));
     }
   });
 

@@ -111,9 +111,16 @@ export class UserService {
     }
   }
 
-  async createOrUpdateUserProfile(userId: string, profileData: z.infer<typeof createUserProfileSchema>) {
+  async upsertUserProfile(userId: string, profileData: z.infer<typeof createUserProfileSchema>) {
     try {
       const validatedData = createUserProfileSchema.parse(profileData);
+
+      // Convert string dates to Date objects for database
+      const processedData = {
+        ...validatedData,
+        marketingConsentAt: validatedData.marketingConsentAt ? new Date(validatedData.marketingConsentAt) : undefined,
+        tosConsentAt: validatedData.tosConsentAt ? new Date(validatedData.tosConsentAt) : undefined,
+      };
 
       const existingProfile = await db
         .select()
@@ -125,7 +132,7 @@ export class UserService {
         const updatedProfile = await db
           .update(userProfiles)
           .set({
-            ...validatedData,
+            ...processedData,
             updatedAt: new Date(),
           })
           .where(eq(userProfiles.id, userId))
@@ -138,8 +145,8 @@ export class UserService {
           .insert(userProfiles)
           .values({
             id: userId,
-            ...validatedData,
-            country: validatedData.country || 'Thailand',
+            ...processedData,
+            country: processedData.country || 'Thailand',
           })
           .returning();
 
@@ -147,7 +154,7 @@ export class UserService {
         return newProfile[0];
       }
     } catch (error) {
-      throw new Error(`Failed to create/update user profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Failed to upsert user profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -249,6 +256,7 @@ export class UserService {
       const profilePayload = {
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
+        displayName: validatedData.displayName,
         phoneNumber: validatedData.phoneNumber,
         phoneNumberVerified: validatedData.phoneNumberVerified || false,
         countryCode: validatedData.countryCode || '+66',

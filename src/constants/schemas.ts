@@ -161,6 +161,7 @@ export const subscriptionUpdateSchema = subscriptionCreateSchema.partial();
 export const onboardingProfileSchema = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
+  displayName: z.string().optional(),
   phoneNumber: z.string(),
   phoneNumberVerified: z.boolean().optional(),
   countryCode: z.string().optional(),
@@ -223,11 +224,19 @@ export const updatePetSchema = createPetSchema.partial();
 export const createUserProfileSchema = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
+  displayName: z.string().optional(),
   phoneNumber: z.string(),
-  country: z.string().default('Thailand'),
+  phoneNumberVerified: z.boolean().optional(),
   countryCode: z.string().default('+66'),
   birthDate: z.string().optional(),
   gender: genderSchema.optional(),
+  country: z.string().default('Thailand'),
+  profileImage: z.string().url().or(z.literal('')).or(z.null()).optional(),
+  marketingConsent: z.boolean().optional(),
+  marketingConsentAt: z.string().datetime().optional(),
+  tosConsent: z.boolean().optional(),
+  tosConsentAt: z.string().datetime().optional(),
+  tosVersion: z.string().optional(),
 });
 
 export const createUserPersonalizationSchema = z.object({

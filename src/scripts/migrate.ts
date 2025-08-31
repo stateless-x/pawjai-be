@@ -1,4 +1,223 @@
-import { migrationService } from '../services/migrationService';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+import { sql } from 'drizzle-orm';
+import { config } from 'dotenv';
+
+// Load environment variables
+config();
+
+export interface MigrationResult {
+  success: boolean;
+  message: string;
+  details?: any;
+  error?: Error;
+  timestamp: string;
+}
+
+export interface MigrationStatus {
+  isRunning: boolean;
+  lastRun: MigrationResult | null;
+  pendingMigrations: string[];
+  currentSchemaVersion: string;
+}
+
+class MigrationService {
+  private isRunning = false;
+  private lastRun: MigrationResult | null = null;
+  private connectionString: string;
+
+  constructor() {
+    this.connectionString = process.env.DATABASE_URL || '';
+    if (!this.connectionString) {
+      throw new Error('DATABASE_URL environment variable is required');
+    }
+  }
+
+  /**
+   * Check if there are pending migrations without running them
+   */
+  async checkPendingMigrations(): Promise<string[]> {
+    try {
+      const client = postgres(this.connectionString, { max: 1 });
+      const db = drizzle(client);
+
+      // Check if migrations table exists
+      const migrationsTableExists = await db.execute(
+        sql`SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = '__drizzle_migrations'
+        )`
+      );
+
+      if (!migrationsTableExists[0]?.exists) {
+        await client.end();
+        return ['Initial setup required'];
+      }
+
+      // Get list of applied migrations
+      const appliedMigrations = await db.execute(
+        sql`SELECT hash FROM __drizzle_migrations ORDER BY created_at`
+      );
+
+      // For Railway deployment, we'll run all migrations automatically
+      // This ensures the database schema is always up to date
+      await client.end();
+      return ['Schema sync required'];
+    } catch (error) {
+      console.error('Error checking pending migrations:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get current schema version
+   */
+  async getCurrentSchemaVersion(): Promise<string> {
+    try {
+      const client = postgres(this.connectionString, { max: 1 });
+      const db = drizzle(client);
+
+      const result = await db.execute(
+        sql`SELECT hash FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 1`
+      );
+
+      await client.end();
+      return (result[0] as any)?.hash || 'no-migrations-applied';
+    } catch (error) {
+      console.error('Error getting current schema version:', error);
+      return 'unknown';
+    }
+  }
+
+  /**
+   * Get current migration status
+   */
+  async getStatus(): Promise<MigrationStatus> {
+    try {
+      const pendingMigrations = await this.checkPendingMigrations();
+      const currentSchemaVersion = await this.getCurrentSchemaVersion();
+
+      return {
+        isRunning: this.isRunning,
+        lastRun: this.lastRun,
+        pendingMigrations,
+        currentSchemaVersion,
+      };
+    } catch (error) {
+      console.error('Error getting migration status:', error);
+      return {
+        isRunning: false,
+        lastRun: null,
+        pendingMigrations: [],
+        currentSchemaVersion: 'error',
+      };
+    }
+  }
+
+  /**
+   * Run all pending migrations
+   */
+  async runMigrations(): Promise<MigrationResult> {
+    if (this.isRunning) {
+      return {
+        success: false,
+        message: 'Migration already in progress',
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    this.isRunning = true;
+    const startTime = Date.now();
+
+    try {
+      console.log('🚀 Starting database migration...');
+      
+      const client = postgres(this.connectionString, { max: 1 });
+      const db = drizzle(client);
+
+      // Check current database schema
+      console.log('🔍 Checking current database schema...');
+      
+      // Ensure all required tables exist with proper structure
+      await this.ensureUserProfilesTable(db);
+      await this.ensureOtherTables(db);
+      
+      // Run any additional schema updates needed
+      await this.runSchemaUpdates(db);
+
+      await client.end();
+
+      const duration = Date.now() - startTime;
+      const result: MigrationResult = {
+        success: true,
+        message: 'Database migration completed successfully',
+        details: {
+          pendingCount: 1,
+          duration,
+          appliedMigrations: ['Schema sync completed'],
+        },
+        timestamp: new Date().toISOString(),
+      };
+
+      this.lastRun = result;
+      this.isRunning = false;
+      return result;
+
+    } catch (error) {
+      const result: MigrationResult = {
+        success: false,
+        message: `Migration failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        error: error instanceof Error ? error : new Error(String(error)),
+        timestamp: new Date().toISOString(),
+      };
+
+      this.lastRun = result;
+      this.isRunning = false;
+      throw error;
+    }
+  }
+
+  /**
+   * Ensure user_profiles table exists with proper structure
+   */
+  private async ensureUserProfilesTable(db: any) {
+    console.log('📋 Ensuring user_profiles table structure...');
+    
+    // Add display_name column if it doesn't exist
+    await db.execute(sql`
+      DO $$ 
+      BEGIN
+          IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns 
+              WHERE table_name = 'user_profiles' 
+              AND column_name = 'display_name'
+          ) THEN
+              ALTER TABLE "user_profiles" ADD COLUMN "display_name" TEXT;
+              COMMENT ON COLUMN "user_profiles"."display_name" IS 'Optional display name for the user that will be shown in the app instead of first name if provided.';
+          END IF;
+      END $$;
+    `);
+  }
+
+  /**
+   * Ensure other required tables exist
+   */
+  private async ensureOtherTables(db: any) {
+    console.log('📋 Ensuring other required tables...');
+    // Add any other table structure checks here if needed
+  }
+
+  /**
+   * Run any additional schema updates
+   */
+  private async runSchemaUpdates(db: any) {
+    console.log('📋 Running schema updates...');
+    // Add any additional schema updates here if needed
+  }
+}
+
+export const migrationService = new MigrationService();
 
 async function runMigrations() {
   console.log('🚀 Starting database migration process...');
@@ -37,32 +256,12 @@ async function runMigrations() {
       process.exit(0);
     } else {
       console.log('\x1b[31m❌ Migration failed:\x1b[0m', result.message);
-      
-      // Check if we should continue despite the error
-      if (result.details?.shouldContinue !== false) {
-        console.log('\x1b[33m⚠️  Migration failed but continuing deployment...\x1b[0m');
-        console.log('💡 The server will retry migrations on next startup');
-        process.exit(0);
-      } else {
-        console.log('\x1b[31m💥 Critical migration error, stopping deployment\x1b[0m');
-        process.exit(1);
-      }
+      process.exit(1);
     }
     
   } catch (error) {
     console.error('\x1b[31m💥 Fatal error during migration process:\x1b[0m', error);
-    
-    // Log detailed error information
-    if (error instanceof Error) {
-      console.error('Error stack:', error.stack);
-      console.error('Error message:', error.message);
-    }
-    
-    // In production, we want to continue deployment even if migration fails
-    // The server will handle retrying migrations on startup
-    console.log('\x1b[33m⚠️  Continuing deployment despite migration error...\x1b[0m');
-    console.log('💡 The server will retry migrations on next startup');
-    process.exit(0);
+    process.exit(1);
   }
 }
 

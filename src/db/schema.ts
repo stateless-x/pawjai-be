@@ -24,6 +24,7 @@ export const userProfiles = pgTable('user_profiles', {
   id: uuid('id').primaryKey(), // Matches auth.users.id
   firstName: text('first_name'),
   lastName: text('last_name'),
+  displayName: text('display_name'),
   phoneNumber: text('phone_number').notNull().unique(),
   phoneNumberVerified: boolean('phone_number_verified').notNull().default(false),
   countryCode: text('country_code').default('+66'),
