@@ -29,6 +29,13 @@
       "when": 1756306743149,
       "tag": "0003_remove_weight_kg",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1756297768904,
+      "tag": "0004_make_occurred_at_optional",
+      "breakpoints": true
     }
   ]
 }

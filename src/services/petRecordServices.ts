@@ -67,7 +67,7 @@ export class PetRecordService {
           vibe: validatedData.vibe,
           imageUrl: validatedData.imageUrl,
           metadata: validatedData.metadata,
-          occurredAt: new Date(validatedData.occurredAt),
+          occurredAt: validatedData.occurredAt ? new Date(validatedData.occurredAt) : new Date(),
         })
         .returning();
       
@@ -205,7 +205,11 @@ export class PetRecordService {
       const [updatedRecord] = await db
         .update(petRecords)
         .set({
-          ...validatedData,
+          note: validatedData.note,
+          vibe: validatedData.vibe,
+          imageUrl: validatedData.imageUrl,
+          metadata: validatedData.metadata,
+          occurredAt: validatedData.occurredAt ? new Date(validatedData.occurredAt) : undefined,
           updatedAt: new Date()
         })
         .where(eq(petRecords.id, recordId))

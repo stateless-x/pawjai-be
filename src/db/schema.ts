@@ -217,7 +217,7 @@ export const petRecords = pgTable('pet_records', {
   vibe: integer('vibe'), // 1-5 rating
   imageUrl: text('image_url').array(),
   metadata: jsonb('metadata'), // Flexible JSON storage for type-specific data
-  occurredAt: timestamp('occurred_at').notNull(),
+  occurredAt: timestamp('occurred_at'),
   isDeleted: boolean('is_deleted').default(false),
   deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').defaultNow(),
