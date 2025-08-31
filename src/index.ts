@@ -7,6 +7,9 @@ import { config } from 'dotenv';
 // Import configurations
 import { configureRateLimiting } from './config/rate-limit';
 
+// Import services
+import { startupService } from './services/startupService';
+
 // Import routes
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
@@ -63,7 +66,41 @@ try {
 
 // Health check endpoint
 fastify.get('/health', async (request, reply) => {
-  return { status: 'ok', timestamp: new Date().toISOString() };
+  try {
+    const startupHealth = await startupService.healthCheck();
+    const migrationHealth = await startupService.healthCheck();
+    
+    return {
+      status: startupHealth.healthy ? 'ok' : 'warning',
+      timestamp: new Date().toISOString(),
+      startup: startupHealth,
+      migrations: migrationHealth
+    };
+  } catch (error) {
+    fastify.log.error('Health check failed:', error);
+    return {
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      error: 'Health check failed'
+    };
+  }
+});
+
+// Migration status endpoint
+fastify.get('/api/migrations/status', async (request, reply) => {
+  try {
+    const status = await startupService.getStatus();
+    const migrationStatus = await startupService.healthCheck();
+    
+    return {
+      startup: status,
+      migrations: migrationStatus,
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    fastify.log.error('Migration status check failed:', error);
+    reply.status(500).send({ error: 'Failed to get migration status' });
+  }
 });
 
 
@@ -99,10 +136,32 @@ const port = process.env.PORT ? parseInt(process.env.PORT) : 4001;
 const host = '0.0.0.0';
 
 try {
+  // Initialize startup services (including migrations)
+  fastify.log.info('🚀 Initializing startup services...');
+  const startupResult = await startupService.initialize();
+  
+  if (!startupResult.success) {
+    fastify.log.warn('⚠️  Startup completed with warnings:', startupResult.message);
+  } else {
+    fastify.log.info('✅ Startup services initialized successfully');
+  }
+  
+  // Start the server
   await fastify.listen({ port, host });
-  fastify.log.info(`Server is running on http://localhost:${port}`);
-  fastify.log.info(`Allowed origins: ${allowedOrigins.join(', ')}`);
+  fastify.log.info(`🚀 Server is running on http://localhost:${port}`);
+  fastify.log.info(`🌐 Allowed origins: ${allowedOrigins.join(', ')}`);
+  fastify.log.info(`📊 Startup status: ${startupResult.message}`);
+  
 } catch (err) {
-  fastify.log.error('Failed to start server:', err);
+  fastify.log.error('💥 Failed to start server:', err);
+  
+  // Log startup status if available
+  try {
+    const status = startupService.getStatus();
+    fastify.log.error('Startup status at failure:', status);
+  } catch (statusError) {
+    fastify.log.error('Could not get startup status:', statusError);
+  }
+  
   process.exit(1);
 } 

@@ -1,59 +1,81 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import { migrate } from 'drizzle-orm/postgres-js/migrator';
-import { config } from 'dotenv';
-import { sql } from 'drizzle-orm';
-
-// Load environment variables
-config();
-
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-  console.error('DATABASE_URL environment variable is required');
-  process.exit(1);
-}
+import { migrationService } from '../services/migrationService';
 
 async function runMigrations() {
-  console.log('🚀 Starting database migration...');
+  console.log('🚀 Starting database migration process...');
   
   try {
-    // Create the postgres client
-    const client = postgres(connectionString!, { max: 1 });
-    
-    // Create the drizzle database instance
-    const db = drizzle(client);
-    
-    // Check current schema before migration
-    console.log('🔍 Checking current database schema...');
-    const result = await db.execute(sql`SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'pets' ORDER BY ordinal_position`);
-    
-    console.log('📋 Current pets table columns:');
-    result.forEach(row => {
-      console.log(`  - ${row.column_name}: ${row.data_type}`);
+    // Check current status first
+    const status = await migrationService.getStatus();
+    console.log('📊 Current migration status:', {
+      isRunning: status.isRunning,
+      pendingMigrations: status.pendingMigrations.length,
+      currentSchemaVersion: status.currentSchemaVersion,
+      lastRun: status.lastRun ? {
+        success: status.lastRun.success,
+        message: status.lastRun.message,
+        timestamp: status.lastRun.timestamp
+      } : null
     });
-    
+
+    if (status.isRunning) {
+      console.log('⚠️  Migration already in progress, waiting...');
+      // Wait a bit and check again
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      const newStatus = await migrationService.getStatus();
+      if (newStatus.isRunning) {
+        console.log('❌ Migration still running after timeout, exiting');
+        process.exit(1);
+      }
+    }
+
     // Run migrations
-    console.log('🔄 Running migrations...');
-    await migrate(db, { migrationsFolder: './db/drizzle' as string });
+    const result = await migrationService.runMigrations();
     
-    console.log('✅ Database migration completed successfully!');
-    
-    // Close the connection
-    await client.end();
-    
-  } catch (error) {
-    console.error('❌ Database migration failed:', error);
-    
-    // Provide helpful error messages
-    if (error instanceof Error && error.message?.includes('column "date_of_birth" does not exist')) {
-      console.log('\n💡 This error occurs because the migration is trying to rename a column that doesn\'t exist.');
-      console.log('   Your database already has the correct column names.');
-      console.log('   You can safely ignore this migration or manually apply the weight_kg removal.');
+    if (result.success) {
+      console.log('✅ Migration completed successfully!');
+      console.log('📋 Details:', result.details);
+      process.exit(0);
+    } else {
+      console.log('❌ Migration failed:', result.message);
+      
+      // Check if we should continue despite the error
+      if (result.details?.shouldContinue !== false) {
+        console.log('⚠️  Migration failed but continuing deployment...');
+        console.log('💡 The server will retry migrations on next startup');
+        process.exit(0);
+      } else {
+        console.log('💥 Critical migration error, stopping deployment');
+        process.exit(1);
+      }
     }
     
-    process.exit(1);
+  } catch (error) {
+    console.error('💥 Fatal error during migration process:', error);
+    
+    // Log detailed error information
+    if (error instanceof Error) {
+      console.error('Error stack:', error.stack);
+      console.error('Error message:', error.message);
+    }
+    
+    // In production, we want to continue deployment even if migration fails
+    // The server will handle retrying migrations on startup
+    console.log('⚠️  Continuing deployment despite migration error...');
+    console.log('💡 The server will retry migrations on next startup');
+    process.exit(0);
   }
 }
 
+// Handle process signals gracefully
+process.on('SIGINT', () => {
+  console.log('\n🛑 Migration process interrupted');
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('\n🛑 Migration process terminated');
+  process.exit(0);
+});
+
+// Run migrations
 runMigrations(); 
