@@ -6,13 +6,7 @@ startCommand = "bun dist/index.js"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
+healthcheckInterval = 30
 
 [deploy.preDeploy]
-command = "bun run db:migrate:prod"
-
-[deploy]
-startCommand = "bun dist/index.js"
-healthcheckPath = "/health"
-healthcheckTimeout = 300
-restartPolicyType = "on_failure"
-healthcheckInterval = 30 
+command = "bun run db:migrate:prod" 
