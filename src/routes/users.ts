@@ -180,37 +180,84 @@ export default async function userRoutes(fastify: FastifyInstance) {
       console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
       console.error('=== END ERROR ===');
       
-      // For debugging, return the actual error message
-      const errorMessage = error instanceof Error ? error.message : String(error);
       
-      // Handle specific error types
+      
       if (error instanceof Error) {
-        if (error.message.includes('Phone number is already registered')) {
-          return reply.status(409).send(ApiResponses.badRequest('Phone number is already registered by another user'));
-        }
-        if (error.message.includes('validation')) {
-          return reply.status(400).send(ApiResponses.validationError({ message: error.message }));
+        if (error.message.includes('Phone number') && error.message.includes('already registered')) {
+          return reply.status(409).send({
+            success: false,
+            error: 'PHONE_NUMBER_ALREADY_EXISTS',
+            message: 'เบอร์โทรศัพท์นี้ถูกใช้งานโดยผู้ใช้อื่นแล้ว',
+            code: 'CONFLICT',
+            meta: {
+              timestamp: new Date().toISOString(),
+              field: 'phoneNumber'
+            }
+          });
         }
         if (error.message.includes('Required fields are missing')) {
-          return reply.status(400).send(ApiResponses.badRequest('Required fields are missing'));
+          return reply.status(400).send({
+            success: false,
+            error: 'MISSING_REQUIRED_FIELDS',
+            message: 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน',
+            code: 'BAD_REQUEST',
+            meta: {
+              timestamp: new Date().toISOString()
+            }
+          });
         }
         if (error.message.includes('Invalid data provided')) {
-          return reply.status(400).send(ApiResponses.badRequest('Invalid data provided'));
+          return reply.status(400).send({
+            success: false,
+            error: 'INVALID_DATA',
+            message: 'ข้อมูลที่กรอกไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่อีกครั้ง',
+            code: 'BAD_REQUEST',
+            meta: {
+              timestamp: new Date().toISOString()
+            }
+          });
         }
         if (error.message.includes('Database connection error')) {
-          return reply.status(503).send(ApiResponses.internalError('Database connection error'));
+          return reply.status(503).send({
+            success: false,
+            error: 'DATABASE_CONNECTION_ERROR',
+            message: 'เกิดปัญหาการเชื่อมต่อกับฐานข้อมูล กรุณาลองใหม่อีกครั้ง',
+            code: 'SERVICE_UNAVAILABLE',
+            meta: {
+              timestamp: new Date().toISOString()
+            }
+          });
         }
         if (error.message.includes('Database operation timed out')) {
-          return reply.status(503).send(ApiResponses.internalError('Database operation timed out'));
+          return reply.status(503).send({
+            success: false,
+            error: 'DATABASE_TIMEOUT',
+            message: 'การดำเนินการใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง',
+            code: 'SERVICE_UNAVAILABLE',
+            meta: {
+              timestamp: new Date().toISOString()
+            }
+          });
+        }
+        if (error.message.includes('validation')) {
+          return reply.status(400).send({
+            success: false,
+            error: 'VALIDATION_ERROR',
+            message: 'ข้อมูลที่กรอกไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่อีกครั้ง',
+            code: 'BAD_REQUEST',
+            meta: {
+              timestamp: new Date().toISOString()
+            }
+          });
         }
       }
       
-      // Return the actual error message for debugging
+      // Generic error for unknown cases
       return reply.status(500).send({
         success: false,
-        error: 'Failed to save profile setup',
+        error: 'INTERNAL_SERVER_ERROR',
+        message: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง',
         code: 'INTERNAL_SERVER_ERROR',
-        debug: errorMessage, // This will show the actual error
         meta: {
           timestamp: new Date().toISOString()
         }
@@ -236,10 +283,64 @@ export default async function userRoutes(fastify: FastifyInstance) {
       return reply.status(201).send(ApiResponses.created(result, 'Onboarding completed successfully'));
     } catch (error) {
       fastify.log.error('Error in /onboarding/complete endpoint:', error);
-      if (error instanceof Error && error.message.includes('validation')) {
-        return reply.status(400).send(ApiResponses.validationError({ message: error.message }));
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Phone number') && error.message.includes('already registered')) {
+          return reply.status(409).send({
+            success: false,
+            error: 'PHONE_NUMBER_ALREADY_EXISTS',
+            message: 'เบอร์โทรศัพท์นี้ถูกใช้งานโดยผู้ใช้อื่นแล้ว',
+            code: 'CONFLICT',
+            meta: {
+              timestamp: new Date().toISOString(),
+              field: 'phoneNumber'
+            }
+          });
+        }
+        if (error.message.includes('Required fields are missing')) {
+          return reply.status(400).send({
+            success: false,
+            error: 'MISSING_REQUIRED_FIELDS',
+            message: 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน',
+            code: 'BAD_REQUEST',
+            meta: {
+              timestamp: new Date().toISOString()
+            }
+          });
+        }
+        if (error.message.includes('Invalid data provided')) {
+          return reply.status(400).send({
+            success: false,
+            error: 'INVALID_DATA',
+            message: 'ข้อมูลที่กรอกไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่อีกครั้ง',
+            code: 'BAD_REQUEST',
+            meta: {
+              timestamp: new Date().toISOString()
+            }
+          });
+        }
+        if (error.message.includes('validation')) {
+          return reply.status(400).send({
+            success: false,
+            error: 'VALIDATION_ERROR',
+            message: 'ข้อมูลที่กรอกไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่อีกครั้ง',
+            code: 'BAD_REQUEST',
+            meta: {
+              timestamp: new Date().toISOString()
+            }
+          });
+        }
       }
-      return reply.status(500).send(ApiResponses.internalError('Failed to complete onboarding'));
+      
+      return reply.status(500).send({
+        success: false,
+        error: 'INTERNAL_SERVER_ERROR',
+        message: 'เกิดข้อผิดพลาดในการดำเนินการ กรุณาลองใหม่อีกครั้ง',
+        code: 'INTERNAL_SERVER_ERROR',
+        meta: {
+          timestamp: new Date().toISOString()
+        }
+      });
     }
   });
 
