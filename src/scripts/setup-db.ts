@@ -73,13 +73,7 @@ async function setupDatabase() {
       END $$;
     `);
 
-    await db.execute(sql`
-      DO $$ BEGIN
-        CREATE TYPE auth_step AS ENUM ('idle', 'signing-up', 'signing-in', 'email-confirmation', 'onboarding', 'completed');
-      EXCEPTION
-        WHEN duplicate_object THEN null;
-      END $$;
-    `);
+
 
     await db.execute(sql`
       DO $$ BEGIN
@@ -137,18 +131,7 @@ async function setupDatabase() {
       );
     `);
 
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS user_auth_states (
-        user_id UUID PRIMARY KEY REFERENCES user_profiles(id),
-        is_authenticated BOOLEAN DEFAULT false,
-        pending_email_confirmation TEXT,
-        email_confirmation_sent BOOLEAN DEFAULT false,
-        onboarding_completed BOOLEAN DEFAULT false,
-        current_auth_step auth_step,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
-      );
-    `);
+
 
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS user_personalization (

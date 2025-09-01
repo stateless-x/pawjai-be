@@ -1,5 +1,5 @@
 import { db } from '@/db';
-import { userProfiles, userPersonalization, pets, userAuthStates } from '@/db/schema';
+import { userProfiles, userPersonalization, pets } from '@/db/schema';
 import { eq, ne, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { 
@@ -8,40 +8,12 @@ import {
   onboardingPetSchemaStrict, 
   completeOnboardingSchemaStrict,
   createUserProfileSchema,
-  createUserPersonalizationSchema,
-  userAuthStateSchema
+  createUserPersonalizationSchema
 } from '@/constants';
 import { toIsoDateOrUndefined } from '@/utils/date';
 import { subscriptionService } from '@/services/subscriptionService';
 
 export class UserService {
-  // Auth state persistence
-  async getAuthState(userId: string) {
-    const rows = await db.select().from(userAuthStates).where(eq(userAuthStates.userId, userId)).limit(1);
-    return rows[0] || null;
-  }
-
-  async upsertAuthState(userId: string, state: z.infer<typeof userAuthStateSchema>) {
-    const validated = userAuthStateSchema.parse(state);
-    const existing = await db.select().from(userAuthStates).where(eq(userAuthStates.userId, userId)).limit(1);
-    if (existing.length > 0) {
-      const [updated] = await db
-        .update(userAuthStates)
-        .set({
-          ...validated,
-          updatedAt: new Date(),
-        })
-        .where(eq(userAuthStates.userId, userId))
-        .returning();
-      return updated;
-    }
-    const [inserted] = await db
-      .insert(userAuthStates)
-      .values({ userId, ...validated })
-      .returning();
-    return inserted;
-  }
-
   // Normal user methods
   async getUserProfile(userId: string) {
     try {
@@ -309,13 +281,7 @@ export class UserService {
           .returning();
       }
 
-      await this.upsertAuthState(userId, { currentAuthStep: 'onboarding' });
-      
-      try {
-        await subscriptionService.ensure(userId);
-      } catch (subscriptionError) {
-        // Don't fail the entire operation if subscription creation fails
-      }
+      await subscriptionService.ensure(userId);
 
       return savedProfile;
     } catch (error) {

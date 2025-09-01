@@ -36,6 +36,13 @@
       "when": 1756297768904,
       "tag": "0004_make_occurred_at_optional",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1756297768905,
+      "tag": "0005_remove_auth_state",
+      "breakpoints": true
     }
   ]
 }

@@ -250,10 +250,4 @@ export const createUserPersonalizationSchema = z.object({
   referralSource: z.string().optional(),
 });
 
-export const userAuthStateSchema = z.object({
-  isAuthenticated: z.boolean().optional(),
-  pendingEmailConfirmation: z.string().nullable().optional(),
-  emailConfirmationSent: z.boolean().optional(),
-  onboardingCompleted: z.boolean().optional(),
-  currentAuthStep: z.enum(['idle','signing-up','signing-in','email-confirmation','onboarding','completed']).optional(),
-}); 
+ 
