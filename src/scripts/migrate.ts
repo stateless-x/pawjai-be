@@ -1,5 +1,6 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
+import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { sql } from 'drizzle-orm';
 import { config } from 'dotenv';
 
@@ -116,7 +117,7 @@ class MigrationService {
   }
 
   /**
-   * Run all pending migrations
+   * Run all pending migrations using Drizzle
    */
   async runMigrations(): Promise<MigrationResult> {
     if (this.isRunning) {
@@ -131,31 +132,45 @@ class MigrationService {
     const startTime = Date.now();
 
     try {
-      console.log('🚀 Starting database migration...');
+      console.log('🚀 Starting Drizzle database migration...');
       
-      const client = postgres(this.connectionString, { max: 1 });
+      const client = postgres(this.connectionString, { 
+        max: 1,
+        idle_timeout: 20,
+        connect_timeout: 10
+      });
+      
       const db = drizzle(client);
 
-      // Check current database schema
-      console.log('🔍 Checking current database schema...');
+      // Check if migrations table exists
+      console.log('🔍 Checking migration status...');
+      const migrationsTableExists = await db.execute(
+        sql`SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = '__drizzle_migrations'
+        )`
+      );
+
+      if (!migrationsTableExists[0]?.exists) {
+        console.log('📋 No migrations table found, running initial setup...');
+      }
+
+      // Run Drizzle migrations
+      console.log('🔄 Running Drizzle migrations...');
+      await migrate(db, { migrationsFolder: './db/drizzle' });
       
-      // Ensure all required tables exist with proper structure
-      await this.ensureUserProfilesTable(db);
-      await this.ensureOtherTables(db);
-      
-      // Run any additional schema updates needed
-      await this.runSchemaUpdates(db);
+      const duration = Date.now() - startTime;
+      console.log(`✅ Database migration completed successfully in ${duration}ms!`);
 
       await client.end();
 
-      const duration = Date.now() - startTime;
       const result: MigrationResult = {
         success: true,
         message: 'Database migration completed successfully',
         details: {
-          pendingCount: 1,
           duration,
-          appliedMigrations: ['Schema sync completed'],
+          appliedMigrations: ['Drizzle migrations applied'],
         },
         timestamp: new Date().toISOString(),
       };
@@ -165,6 +180,9 @@ class MigrationService {
       return result;
 
     } catch (error) {
+      const duration = Date.now() - startTime;
+      console.error('❌ Database migration failed:', error);
+      
       const result: MigrationResult = {
         success: false,
         message: `Migration failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -174,47 +192,11 @@ class MigrationService {
 
       this.lastRun = result;
       this.isRunning = false;
-      throw error;
+      return result;
     }
   }
 
-  /**
-   * Ensure user_profiles table exists with proper structure
-   */
-  private async ensureUserProfilesTable(db: any) {
-    console.log('📋 Ensuring user_profiles table structure...');
-    
-    // Add display_name column if it doesn't exist
-    await db.execute(sql`
-      DO $$ 
-      BEGIN
-          IF NOT EXISTS (
-              SELECT 1 FROM information_schema.columns 
-              WHERE table_name = 'user_profiles' 
-              AND column_name = 'display_name'
-          ) THEN
-              ALTER TABLE "user_profiles" ADD COLUMN "display_name" TEXT;
-              COMMENT ON COLUMN "user_profiles"."display_name" IS 'Optional display name for the user that will be shown in the app instead of first name if provided.';
-          END IF;
-      END $$;
-    `);
-  }
 
-  /**
-   * Ensure other required tables exist
-   */
-  private async ensureOtherTables(db: any) {
-    console.log('📋 Ensuring other required tables...');
-    // Add any other table structure checks here if needed
-  }
-
-  /**
-   * Run any additional schema updates
-   */
-  private async runSchemaUpdates(db: any) {
-    console.log('📋 Running schema updates...');
-    // Add any additional schema updates here if needed
-  }
 }
 
 export const migrationService = new MigrationService();

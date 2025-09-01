@@ -8,6 +8,7 @@
     "db:generate": "drizzle-kit generate:pg --out ./db/drizzle",
     "db:migrate": "bun src/scripts/migrate.ts",
     "db:migrate:prod": "bun run src/scripts/migrate.ts",
+    "db:push": "drizzle-kit push:pg",
     "db:push:prod": "bun run src/scripts/setup-db.ts",
     "db:verify": "bun run src/scripts/verify-deployment.ts",
     "db:setup:auto": "bun run db:push:prod || echo 'Database setup failed, but continuing...'",
