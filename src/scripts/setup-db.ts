@@ -107,6 +107,11 @@ async function setupDatabase() {
       END $$;
     `);
 
+    // Clean up old auth state tables (if they exist)
+    console.log('🧹 Cleaning up old auth state tables...');
+    await db.execute(sql`DROP TABLE IF EXISTS user_auth_states;`);
+    await db.execute(sql`DROP TYPE IF EXISTS auth_step;`);
+
     // Create tables with IF NOT EXISTS
     console.log('📋 Creating tables...');
     await db.execute(sql`
