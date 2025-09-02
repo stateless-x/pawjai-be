@@ -77,6 +77,54 @@ export class PetRecordService {
       throw error;
     }
   }
+
+  /**
+   * Create the same record for multiple pets (bulk create)
+   */
+  async bulkCreateRecords(petIds: string[], userId: string, data: z.infer<typeof createPetRecordSchema>) {
+    try {
+      // Validate input
+      const validatedData = createPetRecordSchema.parse(data);
+      
+      // Verify all pets belong to the user and exist
+      const userPets = await db
+        .select({ id: pets.id, userId: pets.userId, species: pets.species })
+        .from(pets)
+        .where(and(
+          or(...petIds.map(id => eq(pets.id, id))),
+          eq(pets.userId, userId)
+        ));
+      
+      if (userPets.length !== petIds.length) {
+        throw new Error('Some pets not found or access denied');
+      }
+      
+      // Verify type exists in the appropriate lookup table
+      await this.validateTypeId(validatedData.recordType, validatedData.typeId);
+      
+      // Create records for all pets
+      const newRecords = await db
+        .insert(petRecords)
+        .values(
+          petIds.map(petId => ({
+            petId,
+            recordType: validatedData.recordType,
+            typeId: validatedData.typeId,
+            note: validatedData.note,
+            vibe: validatedData.vibe,
+            imageUrl: validatedData.imageUrl,
+            metadata: validatedData.metadata,
+            occurredAt: validatedData.occurredAt ? new Date(validatedData.occurredAt) : new Date(),
+          }))
+        )
+        .returning();
+      
+      return { success: true, data: newRecords };
+    } catch (error) {
+      console.error('Error bulk creating pet records:', error);
+      throw error;
+    }
+  }
   
   /**
    * Get pet records with filtering and pagination
