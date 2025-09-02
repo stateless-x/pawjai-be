@@ -57,9 +57,9 @@ const lookupTypesRoutes: FastifyPluginAsync = async (fastify) => {
 
   /**
    * GET /lookup-types/:type/all-species
-   * Get all lookup types for a specific species
+   * Get all lookup types for a specific species. If species is omitted, return all species.
    */
-  fastify.get<{ Params: LookupTypeParams; Querystring: { species: string } }>('/:type/all-species', async (request, reply) => {
+  fastify.get<{ Params: LookupTypeParams; Querystring: { species?: string } }>('/:type/all-species', async (request, reply) => {
     try {
       // Validate path parameter
       const typeResult = lookupTypeParamSchema.safeParse(request.params.type);
@@ -72,17 +72,29 @@ const lookupTypesRoutes: FastifyPluginAsync = async (fastify) => {
       
       const type = typeResult.data;
       
-      // Validate species query parameter
+      // Handle species optionality
       const { species } = request.query;
-      if (!species || typeof species !== 'string') {
-        return reply.status(400).send({
-          success: false,
-          error: 'Species parameter is required'
+      if (!species) {
+        // Return all active lookup types across species for all categories
+        const [activities, symptoms, vetVisits, medications] = await Promise.all([
+          lookupTypeService.getLookupTypes('activity'),
+          lookupTypeService.getLookupTypes('symptom'),
+          lookupTypeService.getLookupTypes('vet_visit'),
+          lookupTypeService.getLookupTypes('medication')
+        ]);
+        
+        return reply.send({
+          success: true,
+          data: {
+            activities: activities.data as any[],
+            symptoms: symptoms.data as any[],
+            vetVisits: vetVisits.data as any[],
+            medications: medications.data as any[]
+          }
         });
       }
       
       const result = await lookupTypeService.getAllLookupTypesForSpecies(species);
-      
       return reply.send(result);
     } catch (error) {
       console.error('Error fetching all lookup types for species:', error);

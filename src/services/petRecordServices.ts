@@ -13,7 +13,8 @@ import {
   updatePetRecordSchema, 
   petRecordQuerySchema,
   recordTypeSchema,
-  speciesSchema
+  speciesSchema,
+  SPECIES_ENUM
 } from '@/constants';
 import { PaginationOptions, PaginatedResponse, calculateOffset } from '@/utils';
 import { z } from 'zod';
@@ -436,19 +437,46 @@ export class PetRecordService {
    */
   async getAllLookupTypes(species?: string) {
     try {
-      // Fetch all lookup types in parallel
-      const [
-        activitiesResult,
-        symptomsResult,
-        vetVisitsResult,
-        medicationsResult
-      ] = await Promise.all([
+      if (!species) {
+        // If species not specified, fetch for every species and deduplicate by id
+        const speciesList = SPECIES_ENUM as readonly string[];
+        
+        const [activitiesBySpecies, symptomsBySpecies, vetVisitsBySpecies, medicationsBySpecies] = await Promise.all([
+          Promise.all(speciesList.map(s => this.getActivityTypes(s))),
+          Promise.all(speciesList.map(s => this.getSymptomTypes(s))),
+          Promise.all(speciesList.map(s => this.getVetVisitTypes(s))),
+          Promise.all(speciesList.map(s => this.getMedicationTypes(s)))
+        ]);
+        
+        const dedupeById = <T extends { id: string }>(arrays: { data: T[] }[]) => {
+          const map = new Map<string, T>();
+          for (const result of arrays) {
+            for (const item of result.data) {
+              if (!map.has(item.id)) map.set(item.id, item);
+            }
+          }
+          return Array.from(map.values());
+        };
+        
+        return {
+          success: true,
+          data: {
+            activities: dedupeById(activitiesBySpecies),
+            symptoms: dedupeById(symptomsBySpecies),
+            vetVisits: dedupeById(vetVisitsBySpecies),
+            medications: dedupeById(medicationsBySpecies)
+          }
+        };
+      }
+
+      // Species specified: fetch all lookup types in parallel for that species
+      const [activitiesResult, symptomsResult, vetVisitsResult, medicationsResult] = await Promise.all([
         this.getActivityTypes(species),
         this.getSymptomTypes(species),
         this.getVetVisitTypes(species),
         this.getMedicationTypes(species)
       ]);
-      
+
       return {
         success: true,
         data: {
