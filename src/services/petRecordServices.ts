@@ -13,7 +13,8 @@ import {
   updatePetRecordSchema, 
   petRecordQuerySchema,
   recordTypeSchema,
-  speciesSchema
+  speciesSchema,
+  SPECIES_ENUM
 } from '@/constants';
 import { PaginationOptions, PaginatedResponse, calculateOffset } from '@/utils';
 import { z } from 'zod';
@@ -74,6 +75,54 @@ export class PetRecordService {
       return { success: true, data: newRecord };
     } catch (error) {
       console.error('Error creating pet record:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create the same record for multiple pets (bulk create)
+   */
+  async bulkCreateRecords(petIds: string[], userId: string, data: z.infer<typeof createPetRecordSchema>) {
+    try {
+      // Validate input
+      const validatedData = createPetRecordSchema.parse(data);
+      
+      // Verify all pets belong to the user and exist
+      const userPets = await db
+        .select({ id: pets.id, userId: pets.userId, species: pets.species })
+        .from(pets)
+        .where(and(
+          or(...petIds.map(id => eq(pets.id, id))),
+          eq(pets.userId, userId)
+        ));
+      
+      if (userPets.length !== petIds.length) {
+        throw new Error('Some pets not found or access denied');
+      }
+      
+      // Verify type exists in the appropriate lookup table
+      await this.validateTypeId(validatedData.recordType, validatedData.typeId);
+      
+      // Create records for all pets
+      const newRecords = await db
+        .insert(petRecords)
+        .values(
+          petIds.map(petId => ({
+            petId,
+            recordType: validatedData.recordType,
+            typeId: validatedData.typeId,
+            note: validatedData.note,
+            vibe: validatedData.vibe,
+            imageUrl: validatedData.imageUrl,
+            metadata: validatedData.metadata,
+            occurredAt: validatedData.occurredAt ? new Date(validatedData.occurredAt) : new Date(),
+          }))
+        )
+        .returning();
+      
+      return { success: true, data: newRecords };
+    } catch (error) {
+      console.error('Error bulk creating pet records:', error);
       throw error;
     }
   }
@@ -157,6 +206,81 @@ export class PetRecordService {
     }
   }
   
+  /**
+   * Get merged timeline records across all user's pets with pagination
+   */
+  async getTimelineRecords(
+    userId: string,
+    query: z.infer<typeof petRecordQuerySchema>
+  ) {
+    try {
+      // Validate query params
+      const validatedQuery = petRecordQuerySchema.parse(query);
+
+      // Build where conditions (filter by user via join with pets)
+      const conditions = [
+        eq(petRecords.isDeleted, false),
+        eq(pets.userId, userId)
+      ];
+
+      if (validatedQuery.from) {
+        conditions.push(gte(petRecords.occurredAt, new Date(validatedQuery.from)));
+      }
+
+      if (validatedQuery.to) {
+        conditions.push(lte(petRecords.occurredAt, new Date(validatedQuery.to)));
+      }
+
+      if (validatedQuery.kind) {
+        conditions.push(eq(petRecords.recordType, validatedQuery.kind));
+      }
+
+      // Get total count across user's pets
+      const [totalResult] = await db
+        .select({ count: count() })
+        .from(petRecords)
+        .innerJoin(pets, eq(petRecords.petId, pets.id))
+        .where(and(...conditions));
+
+      const total = totalResult.count;
+
+      // Get records ordered by occurredAt desc, createdAt desc
+      const rows = await db
+        .select()
+        .from(petRecords)
+        .innerJoin(pets, eq(petRecords.petId, pets.id))
+        .where(and(...conditions))
+        .orderBy(desc(petRecords.occurredAt), desc(petRecords.createdAt))
+        .limit(validatedQuery.limit)
+        .offset(validatedQuery.offset);
+
+      // Drizzle select with spread returns columns under petRecords alias key in some setups.
+      // Normalize to raw record objects for enrichment.
+      const records = rows.map((row: any) => {
+        // If row contains petRecords fields nested, prefer that; else row is already the record
+        return row?.pet_records ? row.pet_records : row;
+      });
+
+      const enrichedRecords = await this.enrichRecordsWithTypeInfo(records);
+
+      return {
+        success: true,
+        data: {
+          records: enrichedRecords,
+          pagination: {
+            total,
+            limit: validatedQuery.limit,
+            offset: validatedQuery.offset,
+            hasMore: validatedQuery.offset + validatedQuery.limit < total
+          }
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching timeline records:', error);
+      throw error;
+    }
+  }
+
   /**
    * Update a pet record
    */
@@ -388,19 +512,46 @@ export class PetRecordService {
    */
   async getAllLookupTypes(species?: string) {
     try {
-      // Fetch all lookup types in parallel
-      const [
-        activitiesResult,
-        symptomsResult,
-        vetVisitsResult,
-        medicationsResult
-      ] = await Promise.all([
+      if (!species) {
+        // If species not specified, fetch for every species and deduplicate by id
+        const speciesList = SPECIES_ENUM as readonly string[];
+        
+        const [activitiesBySpecies, symptomsBySpecies, vetVisitsBySpecies, medicationsBySpecies] = await Promise.all([
+          Promise.all(speciesList.map(s => this.getActivityTypes(s))),
+          Promise.all(speciesList.map(s => this.getSymptomTypes(s))),
+          Promise.all(speciesList.map(s => this.getVetVisitTypes(s))),
+          Promise.all(speciesList.map(s => this.getMedicationTypes(s)))
+        ]);
+        
+        const dedupeById = <T extends { id: string }>(arrays: { data: T[] }[]) => {
+          const map = new Map<string, T>();
+          for (const result of arrays) {
+            for (const item of result.data) {
+              if (!map.has(item.id)) map.set(item.id, item);
+            }
+          }
+          return Array.from(map.values());
+        };
+        
+        return {
+          success: true,
+          data: {
+            activities: dedupeById(activitiesBySpecies),
+            symptoms: dedupeById(symptomsBySpecies),
+            vetVisits: dedupeById(vetVisitsBySpecies),
+            medications: dedupeById(medicationsBySpecies)
+          }
+        };
+      }
+
+      // Species specified: fetch all lookup types in parallel for that species
+      const [activitiesResult, symptomsResult, vetVisitsResult, medicationsResult] = await Promise.all([
         this.getActivityTypes(species),
         this.getSymptomTypes(species),
         this.getVetVisitTypes(species),
         this.getMedicationTypes(species)
       ]);
-      
+
       return {
         success: true,
         data: {

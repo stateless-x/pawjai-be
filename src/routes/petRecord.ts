@@ -36,6 +36,37 @@ export default async function petRecordRoutes(fastify: FastifyInstance) {
       return reply.status(500).send(ApiResponses.internalError('Failed to create pet record'));
     }
   });
+
+  // Create records for multiple pets (bulk create)
+  fastify.post('/pets/bulk-records', {
+    preHandler: requireAuth(),
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const authenticatedRequest = request as AuthenticatedRequest;
+      const userId = authenticatedRequest.user.id;
+      const { petIds, ...recordData } = request.body as any;
+      
+      if (!petIds || !Array.isArray(petIds) || petIds.length === 0) {
+        return reply.status(400).send(ApiResponses.error('Pet IDs array is required and must not be empty'));
+      }
+      
+      const result = await petRecordService.bulkCreateRecords(petIds, userId, recordData);
+      
+      return reply.status(201).send(ApiResponses.created(result.data, `Pet records created successfully for ${petIds.length} pets`));
+    } catch (error: any) {
+      fastify.log.error('Error bulk creating pet records:', error);
+      
+      if (error.message.includes('Some pets not found') || error.message.includes('access denied')) {
+        return reply.status(404).send(ApiResponses.notFound('Some pets - please check pet ownership and existence'));
+      }
+      
+      if (error.message.includes('Invalid') && error.message.includes('type ID')) {
+        return reply.status(400).send(ApiResponses.error(error.message));
+      }
+      
+      return reply.status(500).send(ApiResponses.internalError('Failed to bulk create pet records'));
+    }
+  });
   
   // Get pet records with filtering and pagination
   fastify.get('/pets/:petId/records', {
@@ -63,6 +94,25 @@ export default async function petRecordRoutes(fastify: FastifyInstance) {
       }
       
       return reply.status(500).send(ApiResponses.internalError('Failed to fetch pet records'));
+    }
+  });
+
+  // Get merged timeline records for all user's pets
+  fastify.get('/timeline/records', {
+    preHandler: requireAuth(),
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const authenticatedRequest = request as AuthenticatedRequest;
+      const userId = authenticatedRequest.user.id;
+
+      const query = request.query as any;
+
+      const result = await petRecordService.getTimelineRecords(userId, query);
+
+      return reply.status(200).send(ApiResponses.success(result.data, 'Timeline records retrieved successfully'));
+    } catch (error: any) {
+      fastify.log.error('Error fetching timeline records:', error);
+      return reply.status(500).send(ApiResponses.internalError('Failed to fetch timeline records'));
     }
   });
   
