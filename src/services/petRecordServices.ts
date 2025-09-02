@@ -207,6 +207,81 @@ export class PetRecordService {
   }
   
   /**
+   * Get merged timeline records across all user's pets with pagination
+   */
+  async getTimelineRecords(
+    userId: string,
+    query: z.infer<typeof petRecordQuerySchema>
+  ) {
+    try {
+      // Validate query params
+      const validatedQuery = petRecordQuerySchema.parse(query);
+
+      // Build where conditions (filter by user via join with pets)
+      const conditions = [
+        eq(petRecords.isDeleted, false),
+        eq(pets.userId, userId)
+      ];
+
+      if (validatedQuery.from) {
+        conditions.push(gte(petRecords.occurredAt, new Date(validatedQuery.from)));
+      }
+
+      if (validatedQuery.to) {
+        conditions.push(lte(petRecords.occurredAt, new Date(validatedQuery.to)));
+      }
+
+      if (validatedQuery.kind) {
+        conditions.push(eq(petRecords.recordType, validatedQuery.kind));
+      }
+
+      // Get total count across user's pets
+      const [totalResult] = await db
+        .select({ count: count() })
+        .from(petRecords)
+        .innerJoin(pets, eq(petRecords.petId, pets.id))
+        .where(and(...conditions));
+
+      const total = totalResult.count;
+
+      // Get records ordered by occurredAt desc, createdAt desc
+      const rows = await db
+        .select()
+        .from(petRecords)
+        .innerJoin(pets, eq(petRecords.petId, pets.id))
+        .where(and(...conditions))
+        .orderBy(desc(petRecords.occurredAt), desc(petRecords.createdAt))
+        .limit(validatedQuery.limit)
+        .offset(validatedQuery.offset);
+
+      // Drizzle select with spread returns columns under petRecords alias key in some setups.
+      // Normalize to raw record objects for enrichment.
+      const records = rows.map((row: any) => {
+        // If row contains petRecords fields nested, prefer that; else row is already the record
+        return row?.pet_records ? row.pet_records : row;
+      });
+
+      const enrichedRecords = await this.enrichRecordsWithTypeInfo(records);
+
+      return {
+        success: true,
+        data: {
+          records: enrichedRecords,
+          pagination: {
+            total,
+            limit: validatedQuery.limit,
+            offset: validatedQuery.offset,
+            hasMore: validatedQuery.offset + validatedQuery.limit < total
+          }
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching timeline records:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Update a pet record
    */
   async updateRecord(

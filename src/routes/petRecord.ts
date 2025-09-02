@@ -96,6 +96,25 @@ export default async function petRecordRoutes(fastify: FastifyInstance) {
       return reply.status(500).send(ApiResponses.internalError('Failed to fetch pet records'));
     }
   });
+
+  // Get merged timeline records for all user's pets
+  fastify.get('/timeline/records', {
+    preHandler: requireAuth(),
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const authenticatedRequest = request as AuthenticatedRequest;
+      const userId = authenticatedRequest.user.id;
+
+      const query = request.query as any;
+
+      const result = await petRecordService.getTimelineRecords(userId, query);
+
+      return reply.status(200).send(ApiResponses.success(result.data, 'Timeline records retrieved successfully'));
+    } catch (error: any) {
+      fastify.log.error('Error fetching timeline records:', error);
+      return reply.status(500).send(ApiResponses.internalError('Failed to fetch timeline records'));
+    }
+  });
   
   // Update a pet record
   fastify.patch('/records/:id', {
