@@ -15,6 +15,34 @@ import {
 import { PaginationOptions, PaginatedResponse, validatePaginationOptions, calculatePaginationInfo, calculateOffset } from '@/utils';
 
 export class PetService {
+  // Helper method to get complete pet data with breed name
+  private async getCompletePetData(petId: string) {
+    const completePet = await db
+      .select({
+        pet: {
+          id: pets.id,
+          userId: pets.userId,
+          breedId: pets.breedId,
+          name: pets.name,
+          species: pets.species,
+          dateOfBirth: pets.dateOfBirth,
+          gender: pets.gender,
+          neutered: pets.neutered,
+          notes: pets.notes,
+          imageUrl: pets.imageUrl,
+          createdAt: pets.createdAt,
+          updatedAt: pets.updatedAt,
+        },
+        breedName: breeds.nameTh,
+      })
+      .from(pets)
+      .leftJoin(breeds, eq(pets.breedId, breeds.id))
+      .where(eq(pets.id, petId))
+      .limit(1);
+
+    return completePet[0];
+  }
+
   // Normal user methods
   async getMyPets(userId: string) {
     try {
@@ -48,38 +76,17 @@ export class PetService {
 
   async getPetById(petId: string, userId?: string) {
     try {
-      const pet = await db
-        .select({
-          pet: {
-            id: pets.id,
-            userId: pets.userId,
-            breedId: pets.breedId,
-            name: pets.name,
-            species: pets.species,
-            dateOfBirth: pets.dateOfBirth,
-            gender: pets.gender,
-            neutered: pets.neutered,
-            notes: pets.notes,
-            imageUrl: pets.imageUrl,
-            createdAt: pets.createdAt,
-            updatedAt: pets.updatedAt,
-          },
-          breedName: breeds.nameTh,
-        })
-        .from(pets)
-        .leftJoin(breeds, eq(pets.breedId, breeds.id))
-        .where(eq(pets.id, petId))
-        .limit(1);
+      const pet = await this.getCompletePetData(petId);
 
-      if (pet.length === 0) {
+      if (!pet) {
         throw new Error('Pet not found');
       }
 
-      if (userId && pet[0].pet.userId !== userId) {
+      if (userId && pet.pet.userId !== userId) {
         throw new Error('Access denied: You can only access your own pets');
       }
 
-      return pet[0];
+      return pet;
     } catch (error) {
       throw new Error(`Failed to get pet by ID: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -144,7 +151,8 @@ export class PetService {
         .values(petInsertData)
         .returning();
 
-      return newPet[0];
+      // Get the complete pet data with breed name (same structure as getMyPets)
+      return await this.getCompletePetData(newPet[0].id);
     } catch (error) {
       throw new Error(`Failed to create pet: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -252,7 +260,8 @@ export class PetService {
         .where(eq(pets.id, petId))
         .returning();
 
-      return updatedPet[0];
+      // Get the complete pet data with breed name (same structure as getMyPets)
+      return await this.getCompletePetData(petId);
     } catch (error) {
       throw new Error(`Failed to update pet: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -273,7 +282,8 @@ export class PetService {
         throw new Error('Pet not found or user does not have permission');
       }
 
-      return updatedPet;
+      // Get the complete pet data with breed name (same structure as getMyPets)
+      return await this.getCompletePetData(petId);
     } catch (error) {
       throw new Error(`Failed to update pet profile image: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -342,21 +352,13 @@ export class PetService {
 
   async getPetByIdByAdmin(petId: string) {
     try {
-      const pet = await db
-        .select({
-          pet: pets,
-          breedName: breeds.nameTh,
-        })
-        .from(pets)
-        .leftJoin(breeds, eq(pets.breedId, breeds.id))
-        .where(eq(pets.id, petId))
-        .limit(1);
+      const pet = await this.getCompletePetData(petId);
 
-      if (pet.length === 0) {
+      if (!pet) {
         throw new Error('Pet not found');
       }
 
-      return pet[0];
+      return pet;
     } catch (error) {
       throw new Error(`Failed to get pet by ID by admin: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -379,7 +381,8 @@ export class PetService {
         throw new Error('Pet not found');
       }
 
-      return updatedPet[0];
+      // Get the complete pet data with breed name (same structure as getMyPets)
+      return await this.getCompletePetData(petId);
     } catch (error) {
       throw new Error(`Failed to update pet by admin: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
