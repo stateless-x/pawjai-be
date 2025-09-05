@@ -151,8 +151,25 @@ export class PetService {
         .values(petInsertData)
         .returning();
 
-      // Get the complete pet data with breed name (same structure as getMyPets)
-      return await this.getCompletePetData(newPet[0].id);
+      // Get the complete pet data with breed name and flatten the structure
+      const completePetData = await this.getCompletePetData(newPet[0].id);
+      
+      // Flatten the structure to match frontend expectations
+      return {
+        id: completePetData.pet.id,
+        userId: completePetData.pet.userId,
+        breedId: completePetData.pet.breedId,
+        name: completePetData.pet.name,
+        species: completePetData.pet.species,
+        dateOfBirth: completePetData.pet.dateOfBirth,
+        gender: completePetData.pet.gender,
+        neutered: completePetData.pet.neutered,
+        notes: completePetData.pet.notes,
+        imageUrl: completePetData.pet.imageUrl,
+        createdAt: completePetData.pet.createdAt,
+        updatedAt: completePetData.pet.updatedAt,
+        breedName: completePetData.breedName
+      };
     } catch (error) {
       throw new Error(`Failed to create pet: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
